@@ -245,7 +245,7 @@ See `ARCHITECTURE.md`. In one line:
 - **Local repo:** `C:\Users\1872146\Documents\CORA`
 - **Structure:** `README.md`, `ARCHITECTURE.md`, `CORA_CONTEXT.md`, `analysis/` (EDA code + figures + findings), `requirements.txt`, `.gitignore` (excludes `.env`, `Docs/`, data samples).
 - **Git remote:** _pending (GitHub)._
-- **Decided:** name = CORA · language policy (English code/docs, ES+PT interactions) · stack · focused workflow.
+- **Decided:** name = CORA · language policy (English code/docs, ES+PT interactions) · stack · focused workflow · spec-driven process (`.kiro/specs/cora/`, `documentation/`).
 - **Pending:** LLM provider (Bedrock vs. direct); GitHub remote + branch/PR flow; Portuguese evaluation fixtures.
 - **Vault note:** `Personal/Carrera/CORA/` (index `CORA.md`), updated as we progress. (Authorized exception: KiroCrew may write under `Personal\Carrera` **only** for CORA; the rest of `Personal\` stays out of scope.)
 
