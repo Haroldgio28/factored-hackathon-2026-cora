@@ -19,7 +19,8 @@ Rules for every task:
 - [ ] **0.2 CI**
   - GitHub Actions: lint, unit tests, contract tests on the fixture; secret scanning (gitleaks).
   - _Requirements: REQ-36, REQ-48_
-- [ ] **0.3 Config & secrets**
+- [x] **0.3 Config & secrets**
+  - Evidence: `src/cora/settings.py`, `tests/unit/test_settings.py` (template keys match settings, no credential shapes, blank template parses).
   - `settings.py` (pydantic-settings), `.env.example` with variable names only; AWS profile name configurable.
   - _Requirements: REQ-36, REQ-48_
 
@@ -75,7 +76,7 @@ Rules for every task:
 ## Phase 3 - NLU & learned component (Days 4-6)
 
 - [ ] **3.1 Labeling guide & gold set**
-  - `documentation/LABELING_GUIDE.md`; labeled utterances from held-out transcripts + team-written; provenance column; double-label 20% and report κ.
+  - `documentation/LABELING_GUIDE.md`; **team-written** labeled utterances (es MX/CO/AR + pt) - dataset transcripts are templated and only seed examples (EDA F7); provenance column; double-label 20% and report κ.
   - _Requirements: REQ-30, REQ-37_
 - [ ] **3.2 Portuguese set**
   - ES->PT translation of the gold set (marked TRANSLATED) + native-style rewrites of 20%; reviewer notes; documented limitation.

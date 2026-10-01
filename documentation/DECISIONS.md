@@ -48,6 +48,13 @@ preferable"*, *"make explicit trade-offs"*). Status: `Accepted` · `Proposed` (n
 - **Decision:** `paraphrase-multilingual-MiniLM-L12-v2` embeddings, calibrated LR; compared to majority, keyword rules, TF-IDF+LR and zero-shot LLM.
 - **Why:** shared es/pt space enables cross-lingual generalization without Portuguese training data; calibration makes `τ` thresholds meaningful; CPU-only; interpretable errors.
 - **Consequences:** must prove it beats baselines on a leakage-safe test split, or we report that it does not and keep the better one.
+- **Update 2026-10-01 (data profile F7):** call transcripts contain only 42 distinct customer utterances and 95% `consulta_general` intents, so they are **not** usable as training or test labels. The gold set is **team-written** (es variants MX/CO/AR + pt), with the 42 dataset utterances used only as seed examples and kept out of the test split; provenance recorded per row.
+
+## ADR-016 - Currency as recorded (no MXN in the data) · Accepted
+- **Context:** profile F3 - Mexican customers' products and transactions are all labeled `USD`; MXN never appears although the dictionary lists it.
+- **Decision:** CORA reports amounts in the currency recorded on the product and never relabels; FX conversion uses `daily_exchange_rates` on explicit request. The anomaly is documented as a data limitation and covered by an evaluation case.
+- **Alternatives:** relabel Mexican USD to MXN (invents data, unverifiable); exclude Mexico (drops 50% of customers).
+- **Consequences:** answers are faithful to the source; judges see the defect was detected and handled transparently.
 
 ## ADR-009 - Mock identity: OTP + HMAC-signed JWT with TTL · Accepted
 - **Decision:** a mock IdP issues short-lived tokens after an OTP step; tools read `customer_id` only from the verified token.
