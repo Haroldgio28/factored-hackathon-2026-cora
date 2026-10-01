@@ -28,11 +28,11 @@ preferable"*, *"make explicit trade-offs"*). Status: `Accepted` · `Proposed` (n
 - **Alternatives:** free-form tool-calling agent (non-deterministic control flow, hard to prove safety); hand-rolled state machine (feasible, but LangGraph gives checkpoints, retries and visualization for free); multi-agent (not required, adds failure modes).
 - **Consequences:** each path in the demo is a reproducible graph path, visible in traces.
 
-## ADR-005 - LLM provider: Amazon Bedrock behind an `LLMClient` interface · Proposed
+## ADR-005 - LLM provider: Amazon Bedrock behind an `LLMClient` interface · Accepted (2026-10-01, owner confirmed)
 - **Context:** target is migration to a personal AWS account; data-minimization rules apply to any external model call (SRC-59).
 - **Decision:** Bedrock (Claude Haiku-class for generation/extraction, larger model only for the B-zs baseline and LLM-judge); a local stub client for tests; provider swappable by config.
 - **Alternatives:** direct OpenAI/Anthropic API (faster setup, second migration later); local open model (no external calls, weaker es/pt quality on a laptop with limited RAM).
-- **Consequences:** one integration from dev to AWS; costs computed from Bedrock list prices. **Owner sign-off pending.**
+- **Consequences:** one integration from dev to AWS; costs computed from Bedrock list prices. Personal account in `us-east-1`, SSO profile `cora-dev`, cross-region inference profiles; model ids in `.env` (see `documentation/AWS_SETUP.md`).
 
 ## ADR-006 - Batch + incremental processing, no streaming · Accepted
 - **Context:** data arrives as daily partitioned files with late arrivals; SRC-55 says incremental delivery does not by itself require streaming.

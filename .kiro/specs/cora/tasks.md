@@ -23,6 +23,11 @@ Rules for every task:
   - `settings.py` (pydantic-settings), `.env.example` with variable names only; AWS profile name configurable.
   - _Requirements: REQ-36, REQ-48_
 
+- [ ] **0.4 AWS account bootstrap & Bedrock smoke test** (owner executes, Kiro assists)
+  - Follow [`documentation/AWS_SETUP.md`](../../../documentation/AWS_SETUP.md) steps 1-7: root MFA, budget + anomaly alerts, IAM Identity Center with `CoraAdmin` / `CoraDeveloper` (least privilege, `infra/iam/cora-developer-policy.json`), SSO profile `cora-dev`, Anthropic FTU form, model ids in `.env`.
+  - Run `python scripts/aws/verify_bedrock.py`; record masked output (latency, tokens, es/pt answers) in `documentation/reports/bedrock_smoke_test.md`.
+  - _Requirements: REQ-36, REQ-40, REQ-43, REQ-48_
+
 ## Phase 1 - Data platform (Days 1-3)
 
 - [ ] **1.1 DataSource interface**

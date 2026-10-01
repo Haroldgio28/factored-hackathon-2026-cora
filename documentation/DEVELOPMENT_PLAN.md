@@ -90,5 +90,5 @@ Langfuse UI -> LLM-simulated users -> TF-IDF comparison -> AWS phase.
 
 ## 7. Open decisions (owner)
 
-- ADR-005 LLM provider (Bedrock proposed).
+- ~~ADR-005 LLM provider~~ - Bedrock accepted 2026-10-01.
 - Submission deadline date (schedule assumes 10 working days from 2026-10-01).
