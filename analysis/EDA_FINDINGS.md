@@ -127,3 +127,22 @@ Full output: [`documentation/reports/data_profile.md`](../documentation/reports/
 | F11 | Transactions are mostly card/cash (POS 35%, ATM 30%); merchant fields ~77% null (non-purchase types). | enums, nulls | Merchant-based search must tolerate missing merchants. |
 
 These findings were not visible from the dictionary alone; each one changes a contract, a decision or a stated limitation.
+
+## 9. Full-history landing validated against the dictionary (2026-10-01)
+
+All 13 tables were landed in full (2023-06-17 to 2026-06-17) as raw Parquet by
+`scripts/data/fetch_to_parquet.py` and recounted by `scripts/data/validate_landing.py`.
+Full output: [`documentation/reports/landing_validation.md`](../documentation/reports/landing_validation.md) / `.json`.
+
+- **Landing integrity:** every table's Parquet row count equals its ingestion manifest, with 0 failed files.
+  Each file was verified (rows and columns equal to its CSV) before the CSV was deleted.
+- **Dimensions match the dictionary exactly** (customers, products, branches, service_agents, marketing_campaigns).
+- **Fact tables are 11-16% below the stated counts** (e.g. transactions 4.43M vs 5M, complaints 67K vs 80K).
+  Every daily partition is present, so this is not a download gap: the dictionary figures are rounded
+  targets, not exact counts. We use the observed counts in all baselines.
+- **`digital_events` is 56% above** the stated 10M (15.6M rows), and **`daily_exchange_rates` has 13,164 rows
+  vs 3,000** (every currency pair per day; already noted in section 8). Total landed: 23.5M rows vs "~19M".
+- **No PK duplicates and no null PKs in any table**, over the full history. The dictionary's "~2% duplicates"
+  is not observed at the key level; record-level dedup checks stay in the curated layer (task 1.2) anyway.
+- **`campaign_sends` has no partitions for 2023-06-17..2023-06-30** (14 days). This is expected, not a gap:
+  the earliest campaign in `marketing_campaigns` starts on 2023-07-01.

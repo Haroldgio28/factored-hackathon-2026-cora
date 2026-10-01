@@ -184,6 +184,6 @@ cython_debug/
 # Original hackathon PDFs - the data dictionary contains plaintext AWS credentials.
 # Context is captured in CORA_CONTEXT.md instead; do not version the PDFs.
 Docs/
-# Downloaded dataset samples (large, derived)
-data/
+# Downloaded dataset (large, derived) - anchored to the repo root so scripts/data/ is still versioned
+/data/
 *.parquet

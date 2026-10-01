@@ -43,6 +43,7 @@ Rules for every task:
 
 - [ ] **1.1 DataSource interface**
   - `LocalSource` (sample folder) and `S3Source` (profile `cora-datathon`); `scripts/fetch_sample` pulls a reproducible sample (fixed months, all dimensions).
+  - Done (2026-10-01): the full history of all 13 tables is landed as raw Parquet by `scripts/data/fetch_to_parquet.py` (replaces the sample fetch; ~0.9 GB) and checked by `scripts/data/validate_landing.py` (`documentation/reports/landing_validation.md`). Pending: the `DataSource` interface itself.
   - _Requirements: REQ-20_
 - [ ] **1.2 Contracts for all 13 tables**
   - Pandera schemas from the data dictionary (types, nullability, PK, enums, ranges); contract tests.
