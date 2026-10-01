@@ -146,3 +146,103 @@ Full output: [`documentation/reports/landing_validation.md`](../documentation/re
   is not observed at the key level; record-level dedup checks stay in the curated layer (task 1.2) anyway.
 - **`campaign_sends` has no partitions for 2023-06-17..2023-06-30** (14 days). This is expected, not a gap:
   the earliest campaign in `marketing_campaigns` starts on 2023-07-01.
+
+## 10. Full-history cross-table EDA (behavior, correlation, capability mapping) (2026-10-01)
+
+Reproduce: `uv run python analysis/eda_full_history.py --outdir analysis/figures`.
+Raw metrics: [`analysis/figures/metrics.json`](figures/metrics.json). All numbers below are **full-history**
+(2023-06-17 to 2026-06-17, every landed row) unless explicitly labelled *sampled*. The driver runs entirely
+in DuckDB (`memory_limit='2GB'`) with aggregated/sampled SQL and converts only small aggregates to pandas,
+so it completes on the ~4 GB-RAM host without `MemoryError`. The default `--sample-frac 0.02` is used only for
+one illustrative sampled metric (see 10.5); every structural figure/number is exact full-history.
+
+### 10.1 Cross-table joinability & correlation
+
+Joins across the operational tables are clean enough to ground the chosen servicing workflow
+(all values from `metrics.json["joinability"]`):
+
+| Join | Metric | Value |
+|---|---|---|
+| customers↔products | orphan `products.customer_id` | 0.0% |
+| customers↔products | products per customer p50/p90/p99 | 3 / 5 / 7 |
+| customers↔transactions | orphan `customer_id` / `product_id` | 0.0% / 0.0% |
+| customers↔transactions | customers with ≥1 transaction | 89.68% |
+| cci↔transcripts | interactions with a transcript | 24.96% |
+| transcripts↔cci | transcript `interaction_id` matches an interaction | 100.0% |
+| transcripts↔customers | transcript `customer_id` matches a customer | 100.0% |
+| transactions↔FX | convertible to USD | 100.0% (12 pairs, see F8) |
+| products | `product_status` = Active / Closed / Blocked / Suspended | 84.99 / 8.01 / 4.98 / 2.02% |
+
+FCR by reason category over the full history matches the sample (`fcr_by_reason_category_pct`): Transaccional
+91.5%, Producto 89.6% are the safe-automation targets; Queja 43.6% is the escalation path — confirming the
+section-3 workflow decision at full scale.
+
+**`origin_interaction_id` full-history verdict:** `cci_complaints.origin_interaction_id_nonnull_pct` = **0.0%**
+and `origin_interaction_id_match_pct` = **0.0%**. The sample-era finding (section 5 / F6) is **confirmed, not
+refuted**: there is no usable complaints→interaction link in the full history either, so a dispute-intake flow
+keyed on that link is not possible. Disputes/complaints remain a human-handoff path, as decided in section 6.
+
+### 10.2 Behavioral & temporal patterns
+
+- **Interaction demand** is flat-seasonal at ~18k–20k/month across three years
+  ([`10_interaction_demand_over_time.png`](figures/10_interaction_demand_over_time.png)); the first and last
+  months are partial (range boundaries). Weekday mix (`interaction_weekday_pct`) is mid-week heavy (Tue–Fri
+  ~16.5% each, Sunday lowest at ~8.4%).
+- **Transaction volume & value** are stable at ~120k txns and ~$87M USD/month with a ~$466 median
+  ([`11_transaction_volume_value_over_time.png`](figures/11_transaction_volume_value_over_time.png)).
+- **Digital events** (15.6M rows, aggregates only) are dominated by PageView 38.2%, Click 23.0%, Login/Logout
+  ~15.6% each ([`12_digital_events_type_mix.png`](figures/12_digital_events_type_mix.png)); Purchase is 1.5%.
+- **Channel mix** is stable over time with Phone ~85% and digital text channels (App/Web Chat/WhatsApp/Email/Web)
+  ~15% combined ([`13_channel_mix_over_time.png`](figures/13_channel_mix_over_time.png)), consistent with
+  section 4 — a text-first assistant maps onto the digital channels and transcribed calls.
+
+### 10.3 Capability → table → column map
+
+From `metrics.json["capability_map"]`. Read capabilities are fully grounded; freeze/unfreeze are **PARTIAL** by
+design because `products` has **no native freeze field** (`has_native_freeze_field=false`; the 17 `product_columns`
+are listed in `metrics.json`).
+
+| Capability | Status | Tables | Key columns | Evidence |
+|---|---|---|---|---|
+| I1 Account balance | SUPPORTED | products | current_balance, currency | 0% orphan products |
+| I2 Recent transactions | SUPPORTED | transactions | transaction_date, amount(_usd), currency | 0% orphan FK |
+| I3 Transaction status | SUPPORTED | transactions | transaction_status, response_code | per-row enum |
+| I4 Card status & limit | SUPPORTED | products | product_status, credit_limit, days_past_due | limits structural-null off credit |
+| I5 FX conversion | SUPPORTED | daily_exchange_rates, transactions | source/target_currency, exchange_rate | 100% convertible, 12 pairs |
+| I6 Product list | SUPPORTED | products | product_type, product_number, product_status | 3/5/7 products per customer |
+| A1 Card freeze | **PARTIAL** | products | product_status | no native freeze field; via status + sandbox overlay (design §6) |
+| A2 Card unfreeze | **PARTIAL** | products | product_status | no native freeze field; via status + sandbox overlay (design §6) |
+
+No capability is UNSUPPORTED by data; A1/A2 are the only PARTIAL rows and the gap is a missing *field*, not
+missing join integrity.
+
+### 10.4 Escalation evidence
+
+From `metrics.json["escalation"]`:
+
+- Complaints by case type: Complaint 60.3%, Claim 24.7%, Request 10.1%, Suggestion 4.9%.
+- Status mix is mostly unresolved (In Process 40.0% + Open 30.0%); `sla_breached` **20.11%** full-history
+  ([`14_complaints_by_status_sla.png`](figures/14_complaints_by_status_sla.png)), matching the ~20.5% sample.
+- Low-FCR categories (<70% FCR) are Queja, Retención, Comercial, Técnico — the data-justified human-handoff set.
+- **Fraud is rare:** `fraud_rate_pct` = **0.0975%** full-history; `fraud_score` (0–100 scale) p50/p90/p99 =
+  15.0 / 27.0 / 29.7, i.e. a long thin tail ([`15_fraud_score_distribution.png`](figures/15_fraud_score_distribution.png)).
+  Fraud scenarios need synthetic cases to be evaluated meaningfully (confirms F9 at full scale).
+
+### 10.5 Updated full-history data-quality numbers
+
+From `metrics.json["data_quality"]`; each number carries a `measurement_scope` label.
+
+| Metric | Scope | Value |
+|---|---|---|
+| PK duplicate rate (customers/products/transactions/complaints/cci) | full-history | 0.0% all |
+| Orphan FK (products.customer_id, transactions.customer_id/product_id) | full-history | 0.0% all |
+| Structural null `credit_limit` by product type | full-history | 100% off-credit; ~5% on credit products |
+| Distinct `customer_text` in transcripts | full-history | **42** (templated — confirms F7, not training labels) |
+| No MXN anywhere (products + transactions) | full-history | confirmed true (confirms F3) |
+| `daily_exchange_rates` rows | full-history | 13,164 (confirms F8) |
+| `campaign_sends` missing early days / first day | full-history | 14 days / 2023-07-01 (expected, confirms §9) |
+| Fraud rate | sampled frac=0.02 | 0.0872% (vs 0.0975% full-history — sampling sanity check) |
+
+Every quantitative claim above is backed by a `metrics.json` key or a figure file; the full-history numbers
+confirm (do not overturn) the sample-era findings F1–F11 while adding the cross-table correlation, temporal
+and capability-mapping evidence the servicing workflow and its escalation path depend on.
