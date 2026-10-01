@@ -30,6 +30,8 @@ build-backend = "uv_build"
 [tool.ruff]
 line-length = 110
 target-version = "py312"
+# `.agents/` is the task-harness scratch area (plans, feature specs), not project source.
+extend-exclude = [".agents"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
