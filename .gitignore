@@ -179,3 +179,11 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# CORA project-specific
+# Original hackathon PDFs - the data dictionary contains plaintext AWS credentials.
+# Context is captured in CORA_CONTEXT.md instead; do not version the PDFs.
+Docs/
+# Downloaded dataset samples (large, derived)
+data/
+*.parquet

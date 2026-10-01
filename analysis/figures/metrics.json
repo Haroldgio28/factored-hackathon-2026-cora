@@ -1,0 +1,77 @@
+{
+  "sample": {
+    "call_center_interactions_rows": 105485,
+    "call_center_interactions_days": 168,
+    "complaints_rows": 10332,
+    "complaints_days": 168,
+    "date_min": "2026-01-01 08:03:46",
+    "date_max": "2026-06-18 07:58:13"
+  },
+  "demand_by_reason_category_pct": {
+    "Transaccional": 34.92,
+    "Producto": 22.15,
+    "Queja": 16.92,
+    "Técnico": 14.99,
+    "Comercial": 8.0,
+    "Retención": 3.01
+  },
+  "fcr_by_reason_category_pct": {
+    "Comercial": 66.1,
+    "Producto": 89.7,
+    "Queja": 43.3,
+    "Retención": 61.6,
+    "Transaccional": 91.8,
+    "Técnico": 69.8
+  },
+  "escalation_by_reason_category_pct": {
+    "Comercial": 9.7,
+    "Producto": 10.0,
+    "Queja": 10.1,
+    "Retención": 9.2,
+    "Transaccional": 10.0,
+    "Técnico": 10.0
+  },
+  "channel_mix_pct": {
+    "Phone": 85.0,
+    "Email": 4.0,
+    "App": 3.9,
+    "Web Chat": 3.3,
+    "WhatsApp": 3.3,
+    "Web": 0.5
+  },
+  "customer_accent_pct": {
+    "mexican": 34.9,
+    "nan": 30.0,
+    "colombian": 21.1,
+    "argentine": 14.0
+  },
+  "median_duration_seconds_by_reason": {
+    "Transaccional": 203.0,
+    "Producto": 263.0,
+    "Técnico": 361.0,
+    "Queja": 431.0,
+    "Retención": 478.0,
+    "Comercial": 542.0
+  },
+  "complaints_case_type_pct": {
+    "Complaint": 60.1,
+    "Claim": 25.0,
+    "Request": 10.1,
+    "Suggestion": 4.9
+  },
+  "complaints_status_pct": {
+    "In Process": 40.1,
+    "Open": 29.3,
+    "Resolved": 20.4,
+    "Escalated": 5.2,
+    "Closed": 4.1,
+    "Rejected": 1.0
+  },
+  "complaints_origin_interaction_id_populated_pct": 0.0,
+  "complaints_sla_breached_pct": 20.53,
+  "high_fcr_automation_candidate_share_pct": 57.08,
+  "high_fcr_automation_candidate_categories": [
+    "Transaccional",
+    "Producto"
+  ]
+}
