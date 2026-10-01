@@ -12,20 +12,31 @@ Rules for every task:
 
 ## Phase 0 - Foundations (Day 1)
 
-- [ ] **0.1 Project skeleton & tooling**
+- [x] **0.1 Project skeleton & tooling**
   - `pyproject.toml` with `uv`, pinned deps, `ruff`, `pytest`, `src/cora` package, `Makefile` + `tasks.ps1` (Windows) with `setup / data / test / eval / demo`.
   - Evidence: `make test` green on an empty suite in CI.
+  - Done 2026-09-30. Verified locally: `uv run ruff check .` passes, `ruff format --check` clean
+    (33 files), `uv run pytest` green (5 passed). `analysis/profile_tables.py` lint fixed
+    (E501 per-file-ignore for the data-dictionary strings).
   - _Requirements: REQ-48_
-- [ ] **0.2 CI**
+- [x] **0.2 CI**
   - GitHub Actions: lint, unit tests, contract tests on the fixture; secret scanning (gitleaks).
+  - Done 2026-09-30. `.github/workflows/ci.yml`: jobs `test` (uv sync --locked, ruff check +
+    format --check, pytest), `secrets` (gitleaks), `no-pdfs` (fails if any PDF is tracked);
+    actions pinned by SHA. Lint/format/tests confirmed green locally.
   - _Requirements: REQ-36, REQ-48_
-- [ ] **0.3 Config & secrets**
+- [x] **0.3 Config & secrets**
+  - Evidence: `src/cora/settings.py`, `tests/unit/test_settings.py` (template keys match settings, no credential shapes, blank template parses).
   - `settings.py` (pydantic-settings), `.env.example` with variable names only; AWS profile name configurable.
   - _Requirements: REQ-36, REQ-48_
 
-- [ ] **0.4 AWS account bootstrap & Bedrock smoke test** (owner executes, Kiro assists)
+- [x] **0.4 AWS account bootstrap & Bedrock smoke test** (owner executes, Kiro assists)
   - Follow [`documentation/AWS_SETUP.md`](../../../documentation/AWS_SETUP.md) steps 1-7: root MFA, budget + anomaly alerts, IAM Identity Center with `CoraAdmin` / `CoraDeveloper` (least privilege, `infra/iam/cora-developer-policy.json`), SSO profile `cora-dev`, Anthropic FTU form, model ids in `.env`.
   - Run `python scripts/aws/verify_bedrock.py`; record masked output (latency, tokens, es/pt answers) in `documentation/reports/bedrock_smoke_test.md`.
+  - Done 2026-09-30. Account is "Sign up for AWS (new)" (Paid Plan, USD 20 spend limit), so the
+    plan deviated from the guide: no IAM Identity Center (unsupported) -> Bedrock API key bearer
+    token instead of SSO profile `cora-dev`; region `us-east-2`; `global.` inference profiles.
+    See the addendum in `AWS_SETUP.md` and evidence in `documentation/reports/bedrock_smoke_test.md`.
   - _Requirements: REQ-36, REQ-40, REQ-43, REQ-48_
 
 ## Phase 1 - Data platform (Days 1-3)
@@ -75,7 +86,7 @@ Rules for every task:
 ## Phase 3 - NLU & learned component (Days 4-6)
 
 - [ ] **3.1 Labeling guide & gold set**
-  - `documentation/LABELING_GUIDE.md`; labeled utterances from held-out transcripts + team-written; provenance column; double-label 20% and report κ.
+  - `documentation/LABELING_GUIDE.md`; **team-written** labeled utterances (es MX/CO/AR + pt) - dataset transcripts are templated and only seed examples (EDA F7); provenance column; double-label 20% and report κ.
   - _Requirements: REQ-30, REQ-37_
 - [ ] **3.2 Portuguese set**
   - ES->PT translation of the gold set (marked TRANSLATED) + native-style rewrites of 20%; reviewer notes; documented limitation.

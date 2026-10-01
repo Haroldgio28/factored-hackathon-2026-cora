@@ -169,8 +169,8 @@ flowchart LR
 - **Input:** customer utterance only (es/pt). Excluded inputs: `detected_intents`, `reason_category`, agent text (leakage, REQ-31).
 - **Representation:** multilingual sentence embeddings (`paraphrase-multilingual-MiniLM-L12-v2`, 384-d) - covers es and pt in one space, CPU-friendly, so Portuguese works without Portuguese training data and can be tested cross-lingually. Alternatives compared: TF-IDF char n-grams (strong cheap baseline), Bedrock embeddings (AWS-native).
 - **Model:** multinomial logistic regression + temperature/isotonic calibration. Chosen for calibration quality (thresholds depend on it), speed and interpretability.
-- **Labels:** guideline in `documentation/LABELING_GUIDE.md`; sources = held-out transcript utterances (dataset-derived), team-written utterances, ES->PT translations; κ on a double-labeled subset (REQ-30).
-- **Splits:** group by `customer_id`; train = Jan 2024-Dec 2025 transcripts, validation = Jan-Mar 2026, test = Apr-Jun 2026; near-duplicate removal by embedding cosine > 0.95 across splits (REQ-31).
+- **Labels:** guideline in `documentation/LABELING_GUIDE.md`; **team-written** utterances (es MX/CO/AR + pt), because dataset transcripts are templated (42 distinct utterances, EDA F7); the 42 dataset utterances only seed examples and never enter test; κ on a double-labeled subset (REQ-30).
+- **Splits:** stratified by intent × language × variant; each utterance is bound to a held-out synthetic customer for scenarios (grouped by `customer_id`); paraphrase families kept in one split; near-duplicate removal by embedding cosine > 0.95 across splits (REQ-31).
 - **Metrics:** macro-F1, per-class recall (especially on escalation classes, where a miss is unsafe), ECE, confusion matrix; ES vs PT breakdown.
 - **Thresholds:** pick `τ_clarify`, `τ_escalate` minimizing expected cost with a cost matrix that weights an unsafe automation ≫ an unnecessary escalation ≫ a clarification turn (REQ-32).
 - **Baselines:** majority class, keyword rules, zero-shot LLM.

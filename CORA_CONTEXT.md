@@ -243,7 +243,7 @@ See `ARCHITECTURE.md`. In one line:
 ## 4. Project status
 
 - **Local repo:** `C:\Users\1872146\Documents\CORA`
-- **Structure:** `README.md`, `ARCHITECTURE.md`, `CORA_CONTEXT.md`, `analysis/` (EDA code + figures + findings), `requirements.txt`, `.gitignore` (excludes `.env`, `Docs/`, data samples).
+- **Structure:** `README.md`, `ARCHITECTURE.md`, `CORA_CONTEXT.md`, `analysis/` (EDA code + figures + findings), `pyproject.toml` + `uv.lock` (pinned deps), `src/cora/`, `tests/`, `.github/workflows/ci.yml`, `.gitignore` (excludes `.env`, `Docs/`, data samples).
 - **Git remote:** _pending (GitHub)._
 - **Decided:** name = CORA · language policy (English code/docs, ES+PT interactions) · stack · focused workflow · spec-driven process (`.kiro/specs/cora/`, `documentation/`).
 - **Pending:** LLM provider (Bedrock vs. direct); GitHub remote + branch/PR flow; Portuguese evaluation fixtures.

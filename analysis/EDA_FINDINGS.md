@@ -100,3 +100,30 @@ Rationale, grounded in the data above:
 2. Stand up the tool/policy layer: identity/session, per-customer authorization, read-only account/transaction tools with documented contracts.
 3. Build the LangGraph decision flow (answer / confirm / abstain / escalate).
 4. Build the evaluation harness (held-out cases incl. adversarial: prompt injection, unauthorized access, expired session, tool failure, ES/PT ambiguity) and a baseline to compare against.
+
+---
+
+## 8. All 13 tables profiled vs the data dictionary (2026-10-01)
+
+Reproduce: `python analysis/profile_tables.py --sample <sample_dir> --out documentation/reports`.
+Full output: [`documentation/reports/data_profile.md`](../documentation/reports/data_profile.md) / `.json`.
+
+**Bucket coverage (full, not sampled):** every fact table has 1,097 daily partitions from 2023-06-17 to 2026-06-17, except `campaign_sends` (1,083, starts 2023-07-01). Raw size ≈ 5.35 GB of CSV, 70% of it `digital_events` (3.76 GB).
+
+**Profiled:** the six dimension/reference tables in full; `transactions`, `digital_events`, `campaign_sends` for 2026-06 (17 days); `call_transcripts`, `satisfaction_surveys`, `call_center_interactions`, `complaints` for 2026-H1.
+
+| # | Finding | Evidence | Impact on CORA |
+|---|---|---|---|
+| F1 | **Schemas match the dictionary exactly** in all 13 tables (no missing/extra columns). | data_profile.md | Contracts can be generated from the dictionary. |
+| F2 | **Categorical values are in Spanish, not the English listed in the dictionary**: `Cuenta Ahorro`, `Tarjeta Crédito`, `México`, `Pasaporte`, `Transaccional`, `Queja`... | enums in data_profile | Contracts must encode the *observed* vocabulary + a mapping to canonical English codes. |
+| F3 | **No MXN anywhere.** All 200,398 products of Mexican customers are in `USD`; Argentina = ARS (+ some USD), Colombia = COP (+ some USD). Transactions likewise have no MXN. | country × currency crosstab | Likely data defect (MXN labeled as USD). CORA must state the currency exactly as recorded and must not silently relabel; flagged as a known data limitation and a policy decision (ADR-016). |
+| F4 | **Duplicates observed: 0%** (PK and full-row, within and across the sampled days) vs "~2%" documented. | data_profile | Keep dedup (defensive, contract-driven), report observed rate honestly; the fixture (REQ-26) injects duplicates to prove the logic. |
+| F5 | **Orphan FKs observed: 0%** for customer/product/agent in all sampled facts vs "small %" documented. | data_profile | Same: check stays, observed rate reported. |
+| F6 | **Null rates vary widely, many are structural**, not the uniform "~5%": `credit_limit`/`days_past_due` ~69% (only credit products), `landline_phone` 50%, `customer_detected_accent` ~30%, `complaints.origin_interaction_id` **100%**. | top_null_columns | Contracts declare nullability per column, conditional on product type where structural. |
+| F7 | **Call transcripts are fully templated:** 26,552 transcripts contain only **42 distinct `customer_text`** strings; `detected_intents` = `consulta_general` in 95%; `detected_language` = `es` in 100%. | transcripts check | Transcripts are **not valid training/test labels** for the intent classifier (would leak and look perfect). Gold set must be team-written (ADR-008 updated). Confirms no Portuguese. |
+| F8 | `daily_exchange_rates` has **13,164 rows** (1,097 days × 12 currency pairs), not 3,000 as documented. | row count | FX conversion has full daily coverage for all pairs. |
+| F9 | Fraud is rare: `is_fraud` = 0.10% of June transactions (69 / 70,691). | enums | Fraud escalation (E3) needs synthetic scenarios to be evaluated with a meaningful sample. |
+| F10 | `satisfaction_surveys.nps_category` has **no Promoters** (only Detractor / Passive among non-null). | enums | Survey data is not a reliable outcome label; used only descriptively. |
+| F11 | Transactions are mostly card/cash (POS 35%, ATM 30%); merchant fields ~77% null (non-purchase types). | enums, nulls | Merchant-based search must tolerate missing merchants. |
+
+These findings were not visible from the dictionary alone; each one changes a contract, a decision or a stated limitation.

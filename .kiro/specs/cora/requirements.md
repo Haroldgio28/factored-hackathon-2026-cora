@@ -207,6 +207,7 @@ THE pipeline SHALL check and report per run: duplicates (by PK and by full-row h
 ### REQ-28 Multi-currency correctness
 - THE SYSTEM SHALL present amounts in the product's currency, and SHALL convert only with the `daily_exchange_rates` row of the relevant date, citing the rate and date.
 - IF no rate exists for that date, THEN THE SYSTEM SHALL use the latest prior rate and state it, or abstain if older than 7 days.
+- THE SYSTEM SHALL report the currency exactly as recorded and SHALL NOT relabel it (the data has no MXN; Mexican products are recorded in USD - ADR-016).
 - **Traces:** SRC-26, SRC-82.
 
 ---
@@ -219,7 +220,7 @@ THE pipeline SHALL check and report per run: duplicates (by PK and by full-row h
 - **Traces:** SRC-35, SRC-54.
 
 ### REQ-30 Valid labels
-- THE labeled set SHALL be built from held-out call transcripts and team-written utterances, labeled with a written guideline; a subset SHALL be double-labeled and agreement (Cohen's κ) reported; label provenance (dataset-derived / team-generated / translated) SHALL be recorded per row.
+- THE labeled set SHALL be **team-written** utterances (Spanish MX/CO/AR variants and Portuguese) labeled with a written guideline - dataset transcripts are templated (42 distinct utterances, see `analysis/EDA_FINDINGS.md` F7) and may only seed examples, never test cases; a subset SHALL be double-labeled and agreement (Cohen's κ) reported; label provenance (dataset-seed / team-generated / translated) SHALL be recorded per row.
 - **Traces:** SRC-36, SRC-58, SRC-68.
 
 ### REQ-31 Leakage prevention & splits

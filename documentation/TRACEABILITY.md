@@ -61,7 +61,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-47 | Tracing | 39 | 5.1 | trace samples | Planned |
 | SRC-48 | Bounded retries | 40 | 5.2 | retry tests | Planned |
 | SRC-49 | Safe fallback | 40 | 5.2 | fallback tests | Planned |
-| SRC-50 | Reproducible setup | 20, 48 | 0.1, 7.6 | clean-clone run | Planned |
+| SRC-50 | Reproducible setup | 20, 48 | 0.1, 7.6 | `pyproject.toml` + `uv.lock`, `Makefile`/`tasks.ps1` (0.1 done: lint/format/pytest green); clean-clone run pending (7.6) | Partial |
 | SRC-51 | Capacity, monitoring, access, retention, remaining work | 50, 51 | 7.1, 7.2 | dossier + load test | Planned |
 | SRC-52 | Explanations from sources/rules/records, not CoT | 08, 27, 39 | 5.1 | trace-based explanations | Planned |
 | SRC-53 | Justified combination of techniques | 03 | 7.3 | design §2, DECISIONS | Partial |
@@ -70,7 +70,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-56 | Labeled update-correctness fixture | 26 | 1.7 | fixture tests | Planned |
 | SRC-57 | Organizer-approved data only | 37 | 3.1 | data provenance table | Planned |
 | SRC-58 | Label real/synthetic/team-generated | 19, 30, 37 | 3.1, 3.2 | provenance column | Planned |
-| SRC-59 | No private data/credentials in submission or LLM calls | 36, 52 | 0.2, 4.2, 7.6 | gitleaks + masking tests | Partial |
+| SRC-59 | No private data/credentials in submission or LLM calls | 36, 52 | 0.2, 4.2, 7.6 | gitleaks job in `.github/workflows/ci.yml` (0.2 done); PII masking (4.2) + clean-clone audit (7.6) pending | Partial |
 | SRC-60 | Mock tools with documented contracts | 38 | 2.2 | TOOL_CONTRACTS.md | Planned |
 | SRC-61 | Trusted authentication | 10, 11 | 2.1 | IdP tests | Planned |
 | SRC-62 | Per-customer access in tool layer | 12 | 2.2 | FORBIDDEN tests | Planned |
@@ -87,12 +87,12 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-73 | p50/p95, cost per case and per SAR | 43 | 6.6 | EVALUATION.md | Planned |
 | SRC-74 | By language & segment; disparities | 19, 46 | 6.7 | fairness section | Planned |
 | SRC-75 | Label offline / simulation / projection | 47 | 6.9 | evidence labels | Planned |
-| SRC-76 | ~2% duplicates | 22, 23 | 1.3 | data_quality.md | Planned |
-| SRC-77 | ~5% nulls | 21, 22 | 1.2, 1.3 | data_quality.md | Planned |
+| SRC-76 | ~2% duplicates | 22, 23 | 1.3 | `documentation/reports/data_profile.md` (observed 0%) | Partial |
+| SRC-77 | ~5% nulls | 21, 22 | 1.2, 1.3 | `documentation/reports/data_profile.md` (structural nulls) | Partial |
 | SRC-78 | Late arrivals | 24 | 1.4, 1.7 | fixture tests | Planned |
 | SRC-79 | Schema evolution | 25 | 1.5, 1.7 | fixture tests | Planned |
-| SRC-80 | Referential integrity + orphans | 22 | 1.3 | data_quality.md | Planned |
+| SRC-80 | Referential integrity + orphans | 22 | 1.3 | `documentation/reports/data_profile.md` (observed 0%) | Partial |
 | SRC-81 | Regional Spanish variants | 18 | 3.1, 3.7 | per-country results | Planned |
 | SRC-82 | Multi-currency + FX | 28 | 2.2 | FX tests | Planned |
 | SRC-83 | Date-partitioned facts | 20 | 1.1, 1.4 | pipeline | Planned |
-| SRC-84 | Synthetic, read-only, credentials not shared | 36 | 0.2, 0.3 | `.gitignore`, gitleaks | Partial |
+| SRC-84 | Synthetic, read-only, credentials not shared | 36 | 0.2, 0.3 | `.gitignore`, gitleaks + no-PDF jobs in `.github/workflows/ci.yml`, `tests/unit/test_settings.py` | Done |

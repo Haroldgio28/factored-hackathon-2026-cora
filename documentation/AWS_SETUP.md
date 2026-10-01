@@ -17,6 +17,39 @@ does not read that bucket with these credentials; Bedrock availability matters m
 
 ---
 
+> ## Account-specific addendum (2026-09-30): "Sign up for AWS (new)" accounts
+>
+> The steps below assume a **classic** AWS account. If you signed up with the new AWS experience
+> (the one with "$100 credits" and "projects"), some steps differ. This is the path actually used
+> for CORA's dev account - evidence in [`reports/bedrock_smoke_test.md`](reports/bedrock_smoke_test.md).
+>
+> - **No IAM Identity Center.** This account type reports *"Access to this service is not supported"*
+>   for Identity Center, so Steps 3-4 (SSO, profile `cora-dev`) do not apply. There is no SSO profile.
+> - **Cost control = spend limit, not Budgets template.** Upgrade from the Free Plan at
+>   `https://settings.aws.com` -> Billing -> Upgrade, and set a **monthly spend limit** (min USD 20)
+>   during the upgrade. The $100 credits carry over to future bills. The upgrade is irreversible.
+>   Add a Budgets alert on top if you want email warnings. Cost Anomaly Detection is enterprise-only here.
+> - **Region is `us-east-2`.** It is the only region enabled on this account, so everything (incl.
+>   the FTU form in Step 5.1) is done in `us-east-2`, not `us-east-1`.
+> - **Inference profiles use the `global.` prefix** (global cross-region routing), e.g.
+>   `global.anthropic.claude-haiku-4-5-20251001-v1:0`, not the `us.` prefix. Read them from
+>   Bedrock console -> Infer -> Inference profiles.
+> - **Auth = Bedrock API key (bearer token).** Bedrock console -> **API keys** -> *Short-term API keys*
+>   -> Generate (lasts <=12 h, inherits your console permissions). Export it per shell session and
+>   never store it in `.env` or commit it:
+>
+>   ```powershell
+>   $env:AWS_BEARER_TOKEN_BEDROCK = "<short-term key>"   # value must start with its bedrock prefix
+>   python scripts/aws/verify_bedrock.py
+>   ```
+>
+>   `verify_bedrock.py` detects this variable, drops `AWS_PROFILE`, and lets boto3 use the bearer
+>   token. Leave `AWS_PROFILE=` empty in `.env` on this account. New accounts start with low Bedrock
+>   token quotas (expect `ThrottlingException` in the Playground); request an increase under
+>   Labs -> Quotas / Service Quotas, or retry later.
+
+---
+
 ## Step 1 - Create the account and lock down root (console, ~15 min)
 
 - [ ] 1.1 Sign up at [aws.amazon.com](https://aws.amazon.com/) with a dedicated email (e.g. `you+aws-cora@...`), choose **Personal** account, add a payment card, pick the **Basic (free) support plan**.
