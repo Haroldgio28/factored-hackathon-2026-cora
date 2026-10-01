@@ -1,6 +1,6 @@
 {
   "run": {
-    "generated_at": "2026-10-01T23:47:41.688226+00:00",
+    "generated_at": "2026-10-01T23:55:21.839160+00:00",
     "data_root": "data/raw_parquet",
     "sample_frac": 0.02,
     "seed": 7,
@@ -33,20 +33,20 @@
         "Retención": 3.0
       },
       "fcr_by_reason_category_pct": {
+        "Retención": 60.2,
         "Técnico": 69.9,
         "Transaccional": 91.5,
-        "Retención": 60.2,
         "Queja": 43.6,
         "Producto": 89.6,
         "Comercial": 65.2
       },
       "median_duration_s_by_reason": {
-        "Técnico": 359.88387812459973,
-        "Transaccional": 204.6505398523176,
-        "Retención": 478.3730364873221,
-        "Queja": 431.15742491384367,
-        "Producto": 262.65065948196667,
-        "Comercial": 540.0987207322213
+        "Retención": 478.40415807932885,
+        "Técnico": 359.7643189253593,
+        "Transaccional": 204.53785984799143,
+        "Queja": 431.283199566198,
+        "Producto": 262.6869580529437,
+        "Comercial": 540.4880262866014
       }
     },
     "cci_complaints": {
@@ -68,22 +68,22 @@
       "credit_limit_null_pct_by_type": {
         "Cuenta Ahorro": 100.0,
         "Tarjeta Débito": 100.0,
-        "Tarjeta Crédito": 5.05,
-        "Préstamo Personal": 4.97,
         "Cuenta Corriente": 100.0,
         "Inversión": 100.0,
         "Préstamo Hipotecario": 5.07,
-        "Seguro": 100.0
+        "Seguro": 100.0,
+        "Tarjeta Crédito": 5.05,
+        "Préstamo Personal": 4.97
       },
       "days_past_due_null_pct_by_type": {
         "Cuenta Ahorro": 100.0,
         "Tarjeta Débito": 100.0,
-        "Tarjeta Crédito": 5.06,
-        "Préstamo Personal": 4.84,
         "Cuenta Corriente": 100.0,
         "Inversión": 100.0,
         "Préstamo Hipotecario": 4.92,
-        "Seguro": 100.0
+        "Seguro": 100.0,
+        "Tarjeta Crédito": 5.06,
+        "Préstamo Personal": 4.84
       },
       "has_native_freeze_field": false,
       "product_columns": [
@@ -160,187 +160,187 @@
       "2023-06": {
         "count": 57418,
         "sum_usd": 41625625.9,
-        "median_usd": 470.59
+        "median_usd": 470.49
       },
       "2023-07": {
         "count": 121121,
         "sum_usd": 86886763.58,
-        "median_usd": 464.46
+        "median_usd": 464.43
       },
       "2023-08": {
         "count": 127919,
         "sum_usd": 90950610.68,
-        "median_usd": 465.02
+        "median_usd": 465.42
       },
       "2023-09": {
         "count": 118902,
         "sum_usd": 84614784.71,
-        "median_usd": 468.36
+        "median_usd": 468.15
       },
       "2023-10": {
         "count": 128065,
         "sum_usd": 91289926.43,
-        "median_usd": 464.54
+        "median_usd": 464.61
       },
       "2023-11": {
         "count": 122255,
         "sum_usd": 86959938.14,
-        "median_usd": 465.6
+        "median_usd": 465.1
       },
       "2023-12": {
         "count": 125490,
         "sum_usd": 89628605.01,
-        "median_usd": 465.57
+        "median_usd": 465.05
       },
       "2024-01": {
         "count": 122418,
         "sum_usd": 87364218.14,
-        "median_usd": 467.38
+        "median_usd": 467.26
       },
       "2024-02": {
         "count": 117330,
         "sum_usd": 83630126.67,
-        "median_usd": 469.26
+        "median_usd": 468.17
       },
       "2024-03": {
         "count": 121105,
         "sum_usd": 86462252.83,
-        "median_usd": 468.18
+        "median_usd": 468.14
       },
       "2024-04": {
         "count": 121731,
         "sum_usd": 87400942.78,
-        "median_usd": 468.56
+        "median_usd": 468.93
       },
       "2024-05": {
         "count": 126416,
         "sum_usd": 89948688.79,
-        "median_usd": 466.71
+        "median_usd": 466.73
       },
       "2024-06": {
         "count": 121441,
         "sum_usd": 86660341.4,
-        "median_usd": 466.39
+        "median_usd": 465.07
       },
       "2024-07": {
         "count": 129316,
         "sum_usd": 92402180.12,
-        "median_usd": 467.72
+        "median_usd": 467.63
       },
       "2024-08": {
         "count": 122109,
         "sum_usd": 88432906.08,
-        "median_usd": 468.84
+        "median_usd": 470.1
       },
       "2024-09": {
         "count": 118012,
         "sum_usd": 83944836.16,
-        "median_usd": 463.17
+        "median_usd": 463.21
       },
       "2024-10": {
         "count": 127758,
         "sum_usd": 91684514.32,
-        "median_usd": 467.99
+        "median_usd": 467.77
       },
       "2024-11": {
         "count": 120835,
         "sum_usd": 86940352.42,
-        "median_usd": 468.38
+        "median_usd": 468.37
       },
       "2024-12": {
         "count": 123343,
         "sum_usd": 88008789.72,
-        "median_usd": 465.36
+        "median_usd": 465.62
       },
       "2025-01": {
         "count": 122056,
         "sum_usd": 87866506.19,
-        "median_usd": 467.12
+        "median_usd": 466.1
       },
       "2025-02": {
         "count": 110632,
         "sum_usd": 78101806.97,
-        "median_usd": 463.55
+        "median_usd": 464.6
       },
       "2025-03": {
         "count": 123365,
         "sum_usd": 88473864.35,
-        "median_usd": 468.02
+        "median_usd": 467.99
       },
       "2025-04": {
         "count": 120838,
         "sum_usd": 86907289.76,
-        "median_usd": 467.06
+        "median_usd": 467.81
       },
       "2025-05": {
         "count": 126679,
         "sum_usd": 89484736.98,
-        "median_usd": 465.55
+        "median_usd": 466.16
       },
       "2025-06": {
         "count": 118998,
         "sum_usd": 85090959.71,
-        "median_usd": 469.47
+        "median_usd": 469.69
       },
       "2025-07": {
         "count": 126867,
         "sum_usd": 90563999.35,
-        "median_usd": 465.27
+        "median_usd": 465.72
       },
       "2025-08": {
         "count": 125886,
         "sum_usd": 89770481.98,
-        "median_usd": 468.56
+        "median_usd": 468.65
       },
       "2025-09": {
         "count": 118785,
         "sum_usd": 84128255.63,
-        "median_usd": 463.75
+        "median_usd": 464.04
       },
       "2025-10": {
         "count": 129256,
         "sum_usd": 94090435.39,
-        "median_usd": 470.17
+        "median_usd": 469.85
       },
       "2025-11": {
         "count": 120323,
         "sum_usd": 84665414.2,
-        "median_usd": 464.03
+        "median_usd": 463.98
       },
       "2025-12": {
         "count": 122817,
         "sum_usd": 88284563.4,
-        "median_usd": 467.28
+        "median_usd": 467.09
       },
       "2026-01": {
         "count": 121549,
         "sum_usd": 86639575.83,
-        "median_usd": 467.27
+        "median_usd": 467.31
       },
       "2026-02": {
         "count": 115332,
         "sum_usd": 82505960.69,
-        "median_usd": 463.75
+        "median_usd": 463.85
       },
       "2026-03": {
         "count": 124296,
         "sum_usd": 89352779.27,
-        "median_usd": 468.91
+        "median_usd": 468.74
       },
       "2026-04": {
         "count": 126499,
         "sum_usd": 89915684.64,
-        "median_usd": 466.88
+        "median_usd": 466.38
       },
       "2026-05": {
         "count": 127155,
         "sum_usd": 90115357.86,
-        "median_usd": 465.62
+        "median_usd": 466.02
       },
       "2026-06": {
         "count": 70691,
         "sum_usd": 50996373.79,
-        "median_usd": 468.51
+        "median_usd": 468.44
       }
     },
     "digital_events_monthly": {
@@ -395,18 +395,18 @@
       "2023-06": {
         "Phone": 85.11,
         "Web": 0.44,
-        "Email": 4.08,
+        "WhatsApp": 3.13,
         "App": 3.77,
-        "Web Chat": 3.46,
-        "WhatsApp": 3.13
+        "Email": 4.08,
+        "Web Chat": 3.46
       },
       "2023-07": {
         "WhatsApp": 3.5,
-        "App": 3.8,
         "Email": 4.14,
+        "App": 3.8,
         "Web Chat": 3.22,
-        "Phone": 84.9,
-        "Web": 0.45
+        "Web": 0.45,
+        "Phone": 84.9
       },
       "2023-08": {
         "Email": 3.97,
@@ -418,35 +418,35 @@
       },
       "2023-09": {
         "WhatsApp": 3.5,
-        "Web Chat": 3.31,
         "Email": 3.88,
         "App": 3.86,
+        "Web": 0.44,
         "Phone": 85.01,
-        "Web": 0.44
+        "Web Chat": 3.31
       },
       "2023-10": {
         "Phone": 85.15,
         "Web": 0.48,
-        "App": 3.72,
+        "WhatsApp": 3.32,
         "Web Chat": 3.22,
         "Email": 4.11,
-        "WhatsApp": 3.32
+        "App": 3.72
       },
       "2023-11": {
         "Phone": 85.04,
         "Web": 0.51,
+        "WhatsApp": 3.23,
         "App": 3.79,
         "Email": 4.24,
-        "Web Chat": 3.19,
-        "WhatsApp": 3.23
+        "Web Chat": 3.19
       },
       "2023-12": {
         "WhatsApp": 3.52,
-        "Web Chat": 3.41,
         "App": 4.09,
+        "Web Chat": 3.41,
+        "Web": 0.53,
         "Email": 3.89,
-        "Phone": 84.55,
-        "Web": 0.53
+        "Phone": 84.55
       },
       "2024-01": {
         "Email": 3.86,
@@ -459,151 +459,151 @@
       "2024-02": {
         "Phone": 85.06,
         "Web": 0.57,
-        "App": 3.82,
-        "Web Chat": 3.14,
+        "WhatsApp": 3.45,
         "Email": 3.96,
-        "WhatsApp": 3.45
+        "App": 3.82,
+        "Web Chat": 3.14
       },
       "2024-03": {
-        "Web": 0.5,
         "Phone": 84.87,
-        "WhatsApp": 3.29,
+        "Web": 0.5,
+        "Email": 4.11,
         "Web Chat": 3.29,
         "App": 3.94,
-        "Email": 4.11
+        "WhatsApp": 3.29
       },
       "2024-04": {
-        "Phone": 84.65,
-        "Web": 0.43,
-        "WhatsApp": 3.51,
-        "Web Chat": 3.57,
         "Email": 3.79,
-        "App": 4.04
+        "App": 4.04,
+        "Phone": 84.65,
+        "Web Chat": 3.57,
+        "Web": 0.43,
+        "WhatsApp": 3.51
       },
       "2024-05": {
-        "Phone": 84.85,
-        "Web": 0.46,
-        "WhatsApp": 3.48,
-        "Web Chat": 3.39,
         "Email": 3.94,
-        "App": 3.87
+        "Web": 0.46,
+        "App": 3.87,
+        "Web Chat": 3.39,
+        "Phone": 84.85,
+        "WhatsApp": 3.48
       },
       "2024-06": {
         "Phone": 85.08,
         "Web": 0.53,
-        "Web Chat": 3.24,
+        "WhatsApp": 3.3,
         "App": 3.93,
-        "Email": 3.92,
-        "WhatsApp": 3.3
+        "Web Chat": 3.24,
+        "Email": 3.92
       },
       "2024-07": {
         "Phone": 84.72,
         "Web": 0.49,
+        "WhatsApp": 3.35,
         "Email": 4.23,
         "Web Chat": 3.27,
-        "App": 3.94,
-        "WhatsApp": 3.35
+        "App": 3.94
       },
       "2024-08": {
         "WhatsApp": 3.16,
-        "Web Chat": 3.47,
-        "Email": 4.1,
         "App": 3.98,
-        "Phone": 84.89,
-        "Web": 0.41
+        "Email": 4.1,
+        "Web Chat": 3.47,
+        "Web": 0.41,
+        "Phone": 84.89
       },
       "2024-09": {
         "Phone": 84.91,
         "Web": 0.55,
-        "App": 4.2,
-        "Email": 3.92,
+        "WhatsApp": 3.34,
         "Web Chat": 3.08,
-        "WhatsApp": 3.34
+        "App": 4.2,
+        "Email": 3.92
       },
       "2024-10": {
         "App": 3.77,
-        "Web Chat": 3.18,
         "Email": 4.1,
+        "Web Chat": 3.18,
         "WhatsApp": 3.3,
         "Phone": 85.1,
         "Web": 0.55
       },
       "2024-11": {
-        "App": 3.81,
         "Email": 3.98,
+        "App": 3.81,
+        "Phone": 85.42,
         "Web Chat": 3.27,
         "WhatsApp": 2.88,
-        "Phone": 85.42,
         "Web": 0.65
       },
       "2024-12": {
         "WhatsApp": 3.21,
-        "Email": 3.84,
-        "Web Chat": 3.44,
         "App": 4.06,
         "Web": 0.5,
-        "Phone": 84.94
+        "Web Chat": 3.44,
+        "Phone": 84.94,
+        "Email": 3.84
       },
       "2025-01": {
         "WhatsApp": 3.19,
-        "Email": 4.23,
-        "App": 3.84,
-        "Web Chat": 3.19,
+        "Web": 0.53,
         "Phone": 85.02,
-        "Web": 0.53
+        "Email": 4.23,
+        "Web Chat": 3.19,
+        "App": 3.84
       },
       "2025-02": {
         "WhatsApp": 3.53,
-        "App": 3.71,
+        "Phone": 84.52,
         "Email": 4.1,
         "Web Chat": 3.54,
-        "Phone": 84.52,
+        "App": 3.71,
         "Web": 0.59
       },
       "2025-03": {
         "Phone": 85.17,
         "Web": 0.53,
-        "App": 3.67,
-        "Web Chat": 3.47,
+        "WhatsApp": 3.34,
         "Email": 3.82,
-        "WhatsApp": 3.34
+        "App": 3.67,
+        "Web Chat": 3.47
       },
       "2025-04": {
+        "Web Chat": 3.44,
         "Email": 4.1,
         "App": 3.6,
-        "Web Chat": 3.44,
         "WhatsApp": 3.38,
         "Phone": 84.91,
         "Web": 0.56
       },
       "2025-05": {
-        "WhatsApp": 3.25,
-        "Web Chat": 3.36,
         "App": 3.74,
+        "Web Chat": 3.36,
         "Email": 4.21,
-        "Phone": 84.95,
-        "Web": 0.48
+        "Web": 0.48,
+        "WhatsApp": 3.25,
+        "Phone": 84.95
       },
       "2025-06": {
+        "Email": 3.81,
         "App": 3.84,
         "Web Chat": 3.49,
-        "Email": 3.81,
         "WhatsApp": 3.28,
         "Phone": 85.19,
         "Web": 0.39
       },
       "2025-07": {
-        "Phone": 84.88,
-        "Web": 0.47,
-        "WhatsApp": 3.31,
         "Email": 4.19,
+        "Phone": 84.88,
         "App": 3.71,
-        "Web Chat": 3.44
+        "Web Chat": 3.44,
+        "Web": 0.47,
+        "WhatsApp": 3.31
       },
       "2025-08": {
+        "Web Chat": 3.52,
         "Email": 3.91,
         "App": 3.8,
-        "Web Chat": 3.52,
         "WhatsApp": 3.22,
         "Phone": 85.08,
         "Web": 0.47
@@ -611,79 +611,79 @@
       "2025-09": {
         "Phone": 84.97,
         "Web": 0.59,
+        "WhatsApp": 3.33,
         "Web Chat": 3.21,
         "Email": 3.96,
-        "App": 3.93,
-        "WhatsApp": 3.33
+        "App": 3.93
       },
       "2025-10": {
         "Phone": 85.23,
         "Web": 0.45,
+        "WhatsApp": 3.36,
         "Web Chat": 3.25,
         "App": 3.6,
-        "Email": 4.11,
-        "WhatsApp": 3.36
+        "Email": 4.11
       },
       "2025-11": {
         "WhatsApp": 3.48,
+        "Web": 0.53,
+        "App": 3.83,
         "Web Chat": 3.52,
         "Email": 3.96,
-        "App": 3.83,
-        "Phone": 84.68,
-        "Web": 0.53
+        "Phone": 84.68
       },
       "2025-12": {
         "WhatsApp": 3.42,
-        "Email": 4.18,
-        "App": 3.81,
         "Web Chat": 3.26,
         "Phone": 84.83,
-        "Web": 0.5
+        "Web": 0.5,
+        "App": 3.81,
+        "Email": 4.18
       },
       "2026-01": {
+        "App": 3.93,
+        "Email": 3.95,
+        "Web Chat": 3.2,
         "Phone": 84.94,
         "Web": 0.43,
-        "WhatsApp": 3.55,
-        "Web Chat": 3.2,
-        "App": 3.93,
-        "Email": 3.95
+        "WhatsApp": 3.55
       },
       "2026-02": {
         "Phone": 84.98,
         "Web": 0.53,
-        "Email": 3.8,
-        "Web Chat": 3.33,
+        "WhatsApp": 3.42,
         "App": 3.95,
-        "WhatsApp": 3.42
+        "Email": 3.8,
+        "Web Chat": 3.33
       },
       "2026-03": {
         "Phone": 84.93,
         "Web": 0.4,
+        "WhatsApp": 3.28,
         "Web Chat": 3.39,
         "App": 3.86,
-        "Email": 4.14,
-        "WhatsApp": 3.28
+        "Email": 4.14
       },
       "2026-04": {
         "WhatsApp": 3.17,
+        "Phone": 84.85,
         "Email": 4.11,
         "Web Chat": 3.49,
         "App": 3.85,
-        "Phone": 84.85,
         "Web": 0.52
       },
       "2026-05": {
         "WhatsApp": 3.3,
-        "App": 3.94,
-        "Email": 3.86,
-        "Web Chat": 3.18,
         "Phone": 85.2,
-        "Web": 0.5
+        "Web": 0.5,
+        "Web Chat": 3.18,
+        "App": 3.94,
+        "Email": 3.86
       },
       "2026-06": {
-        "Email": 3.98,
-        "App": 3.86,
         "Web Chat": 3.49,
+        "App": 3.86,
+        "Email": 3.98,
         "WhatsApp": 3.2,
         "Phone": 85.04,
         "Web": 0.43
@@ -843,9 +843,9 @@
     ],
     "fraud_rate_pct": 0.0975,
     "fraud_score_quantiles": {
-      "p50": 15.0115,
-      "p90": 27.025,
-      "p99": 29.7192
+      "p50": 15.0207,
+      "p90": 27.0157,
+      "p99": 29.7152
     }
   },
   "data_quality": {
@@ -879,12 +879,12 @@
       "products.credit_limit_by_type": {
         "Cuenta Ahorro": 100.0,
         "Tarjeta Débito": 100.0,
-        "Tarjeta Crédito": 5.05,
-        "Préstamo Personal": 4.97,
         "Cuenta Corriente": 100.0,
         "Inversión": 100.0,
         "Préstamo Hipotecario": 5.07,
-        "Seguro": 100.0
+        "Seguro": 100.0,
+        "Tarjeta Crédito": 5.05,
+        "Préstamo Personal": 4.97
       }
     },
     "distinct_customer_text_in_transcripts": 42,
@@ -892,6 +892,6 @@
     "fx_rows": 13164,
     "campaign_sends_first_day": "2023-07-01",
     "campaign_sends_missing_early_days": 14,
-    "sampled_fraud_rate_pct": 0.1077
+    "sampled_fraud_rate_pct": 0.0952
   }
 }
