@@ -4,12 +4,14 @@ Reads a local multi-day sample of call_center_interactions and complaints,
 produces demand/resolution/channel charts and a JSON metrics summary used as
 evidence for workflow selection. Charts/metrics are written to --outdir.
 """
+
 import argparse
 import glob
 import json
 import os
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -99,9 +101,11 @@ def main():
     metrics["median_duration_seconds_by_reason"] = dur.to_dict()
 
     # 6. Complaints structure
-    metrics["complaints_case_type_pct"] = (cmp["case_type"].value_counts(normalize=True) * 100).round(1).to_dict()
+    case_type_share = cmp["case_type"].value_counts(normalize=True) * 100
+    metrics["complaints_case_type_pct"] = case_type_share.round(1).to_dict()
     metrics["complaints_status_pct"] = (cmp["status"].value_counts(normalize=True) * 100).round(1).to_dict()
-    metrics["complaints_origin_interaction_id_populated_pct"] = round(float(cmp["origin_interaction_id"].notna().mean() * 100), 2)
+    origin_populated = float(cmp["origin_interaction_id"].notna().mean() * 100)
+    metrics["complaints_origin_interaction_id_populated_pct"] = round(origin_populated, 2)
     metrics["complaints_sla_breached_pct"] = round(float(cmp["sla_breached"].mean() * 100), 2)
 
     # Automatable volume estimate: Transaccional + Producto share with high FCR

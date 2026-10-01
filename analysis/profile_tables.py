@@ -8,6 +8,7 @@ date ranges and orphan foreign keys, and writes a markdown report + JSON metrics
 Usage:
     python analysis/profile_tables.py --sample <sample_dir> --out documentation/reports
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,18 +35,31 @@ DICTIONARY = {
     "campaign_sends": "send_id send_date process_date campaign_id customer_id send_channel template_used subject send_status was_delivered was_opened open_date was_clicked click_date click_count had_conversion conversion_date conversion_value open_device open_country failure_reason send_cost",
 }
 PK = {
-    "customers": ["customer_id"], "products": ["product_id"], "branches": ["branch_id"],
-    "service_agents": ["agent_id"], "marketing_campaigns": ["campaign_id"],
+    "customers": ["customer_id"],
+    "products": ["product_id"],
+    "branches": ["branch_id"],
+    "service_agents": ["agent_id"],
+    "marketing_campaigns": ["campaign_id"],
     "daily_exchange_rates": ["date", "source_currency", "target_currency"],
-    "transactions": ["transaction_id"], "call_center_interactions": ["interaction_id"],
-    "call_transcripts": ["transcript_id"], "satisfaction_surveys": ["survey_id"],
-    "digital_events": ["event_id"], "complaints": ["complaint_id"], "campaign_sends": ["send_id"],
+    "transactions": ["transaction_id"],
+    "call_center_interactions": ["interaction_id"],
+    "call_transcripts": ["transcript_id"],
+    "satisfaction_surveys": ["survey_id"],
+    "digital_events": ["event_id"],
+    "complaints": ["complaint_id"],
+    "campaign_sends": ["send_id"],
 }
 DATE_COL = {
-    "transactions": "transaction_date", "call_center_interactions": "interaction_date",
-    "call_transcripts": "process_date", "satisfaction_surveys": "survey_date",
-    "digital_events": "event_date", "complaints": "creation_date", "campaign_sends": "send_date",
-    "daily_exchange_rates": "date", "customers": "registration_date", "products": "opening_date",
+    "transactions": "transaction_date",
+    "call_center_interactions": "interaction_date",
+    "call_transcripts": "process_date",
+    "satisfaction_surveys": "survey_date",
+    "digital_events": "event_date",
+    "complaints": "creation_date",
+    "campaign_sends": "send_date",
+    "daily_exchange_rates": "date",
+    "customers": "registration_date",
+    "products": "opening_date",
 }
 ENUMS = {
     "customers": ["country", "segment", "customer_status", "document_type", "detected_accent"],
@@ -61,14 +75,23 @@ ENUMS = {
     "marketing_campaigns": ["campaign_type", "campaign_objective", "campaign_status"],
 }
 SAMPLE_DIR = {"call_center_interactions": "cci"}
-DIMENSIONS = ["customers", "products", "branches", "service_agents", "marketing_campaigns", "daily_exchange_rates"]
+DIMENSIONS = [
+    "customers",
+    "products",
+    "branches",
+    "service_agents",
+    "marketing_campaigns",
+    "daily_exchange_rates",
+]
 
 
 def load(sample: str, table: str) -> tuple[pd.DataFrame, int]:
     if table in DIMENSIONS:
         return pd.read_csv(os.path.join(sample, "dim", f"{table}.csv"), low_memory=False), 1
-    files = glob.glob(os.path.join(sample, SAMPLE_DIR.get(table, table), "**", "*.csv"), recursive=True)
-    return pd.concat((pd.read_csv(f, low_memory=False) for f in files), ignore_index=True), len(files)
+    pattern = os.path.join(sample, SAMPLE_DIR.get(table, table), "**", "*.csv")
+    files = glob.glob(pattern, recursive=True)
+    frames = (pd.read_csv(f, low_memory=False) for f in files)
+    return pd.concat(frames, ignore_index=True), len(files)
 
 
 def profile(df: pd.DataFrame, table: str, files: int, ids: dict) -> dict:
@@ -77,40 +100,79 @@ def profile(df: pd.DataFrame, table: str, files: int, ids: dict) -> dict:
     pk = PK[table]
     null_pct = (df.isna().mean() * 100).round(2)
     res = {
-        "rows": int(len(df)), "files": files,
+        "rows": int(len(df)),
+        "files": files,
         "missing_vs_dictionary": sorted(expected - actual),
         "extra_vs_dictionary": sorted(actual - expected),
-        "pk_duplicate_pct": round(float(df.duplicated(subset=pk).mean() * 100), 3) if set(pk) <= actual else None,
+        "pk_duplicate_pct": round(float(df.duplicated(subset=pk).mean() * 100), 3)
+        if set(pk) <= actual
+        else None,
         "full_row_duplicate_pct": round(float(df.duplicated().mean() * 100), 3),
-        "top_null_columns_pct": null_pct[null_pct > 0].sort_values(ascending=False).head(8).to_dict(),
-        "enums": {c: df[c].astype(str).value_counts().head(10).to_dict() for c in ENUMS.get(table, []) if c in actual},
+        "top_null_columns_pct": (null_pct[null_pct > 0].sort_values(ascending=False).head(8).to_dict()),
+        "enums": {
+            c: df[c].astype(str).value_counts().head(10).to_dict()
+            for c in ENUMS.get(table, [])
+            if c in actual
+        },
     }
     dc = DATE_COL.get(table)
     if dc and dc in actual:
         d = pd.to_datetime(df[dc], errors="coerce")
         res["date_range"] = [str(d.min()), str(d.max())]
         res["unparseable_dates_pct"] = round(float(d.isna().mean() * 100), 3)
-    for fk, ref in (("customer_id", "customers"), ("product_id", "products"), ("agent_id", "service_agents")):
+    foreign_keys = (
+        ("customer_id", "customers"),
+        ("product_id", "products"),
+        ("agent_id", "service_agents"),
+    )
+    for fk, ref in foreign_keys:
         if fk in actual and table != ref and ref in ids:
             vals = df[fk].dropna()
-            res[f"orphan_{fk}_pct"] = round(float((~vals.isin(ids[ref])).mean() * 100), 3) if len(vals) else None
+            res[f"orphan_{fk}_pct"] = (
+                round(float((~vals.isin(ids[ref])).mean() * 100), 3) if len(vals) else None
+            )
     return res
 
 
 def to_markdown(results: dict, total_bytes: dict) -> str:
-    out = ["# Data Profile - all 13 tables", "",
-           "Generated by `analysis/profile_tables.py`. Dimensions read in full; facts from the local sample (see `files`).",
-           "Evidence type: **offline measurement on the organizer's synthetic data**.", ""]
-    out += ["## Summary", "", "| Table | Rows profiled | Files | Missing vs dict | Extra vs dict | PK dup % | Row dup % | Date range |",
-            "|---|---|---|---|---|---|---|---|"]
+    out = [
+        "# Data Profile - all 13 tables",
+        "",
+        "Generated by `analysis/profile_tables.py`. Dimensions read in full; "
+        "facts from the local sample (see `files`).",
+        "Evidence type: **offline measurement on the organizer's synthetic data**.",
+        "",
+    ]
+    out += [
+        "## Summary",
+        "",
+        "| Table | Rows profiled | Files | Missing vs dict | Extra vs dict | "
+        "PK dup % | Row dup % | Date range |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
     for t, r in results.items():
         dr = " -> ".join(x[:10] for x in r.get("date_range", ["", ""]))
-        out.append(f"| `{t}` | {r['rows']:,} | {r['files']} | {', '.join(r['missing_vs_dictionary']) or '-'} | "
-                   f"{', '.join(r['extra_vs_dictionary']) or '-'} | {r['pk_duplicate_pct']} | {r['full_row_duplicate_pct']} | {dr} |")
+        out.append(
+            f"| `{t}` | {r['rows']:,} | {r['files']} | "
+            f"{', '.join(r['missing_vs_dictionary']) or '-'} | "
+            f"{', '.join(r['extra_vs_dictionary']) or '-'} | "
+            f"{r['pk_duplicate_pct']} | {r['full_row_duplicate_pct']} | {dr} |"
+        )
     out += ["", "## Per-table detail", ""]
     for t, r in results.items():
-        out += [f"### `{t}`", "", "```json", json.dumps({k: v for k, v in r.items() if k not in ('rows', 'files')},
-                                                          ensure_ascii=False, indent=2, default=str), "```", ""]
+        out += [
+            f"### `{t}`",
+            "",
+            "```json",
+            json.dumps(
+                {k: v for k, v in r.items() if k not in ("rows", "files")},
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            ),
+            "```",
+            "",
+        ]
     return "\n".join(out)
 
 
@@ -128,8 +190,15 @@ def main() -> None:
             ids[t] = set(df[PK[t][0]].dropna())
         results[t] = profile(df, t, n, ids)
         del df
-    for t in ["transactions", "call_center_interactions", "call_transcripts", "satisfaction_surveys",
-              "digital_events", "complaints", "campaign_sends"]:
+    for t in [
+        "transactions",
+        "call_center_interactions",
+        "call_transcripts",
+        "satisfaction_surveys",
+        "digital_events",
+        "complaints",
+        "campaign_sends",
+    ]:
         df, n = load(args.sample, t)
         results[t] = profile(df, t, n, ids)
         del df

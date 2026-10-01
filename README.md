@@ -30,16 +30,31 @@ A focused, safe, measurable customer-service workflow with **controlled automati
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - technical stack and local->AWS migration plan.
 - [`analysis/EDA_FINDINGS.md`](analysis/EDA_FINDINGS.md) - exploratory analysis, charts and workflow selection.
 
+## Setup
+
+Python 3.12 and [uv](https://docs.astral.sh/uv/). Dependencies are pinned in `uv.lock`.
+
+| Make (Linux/macOS) | PowerShell (Windows) | What |
+|---|---|---|
+| `make setup` | `.\tasks.ps1 setup` | `uv sync --locked --all-groups` |
+| `make lint` | `.\tasks.ps1 lint` | ruff check + format check |
+| `make format` | `.\tasks.ps1 format` | ruff autofix + format |
+| `make test` | `.\tasks.ps1 test` | pytest |
+| `make data` / `eval` / `demo` | `.\tasks.ps1 data` / `eval` / `demo` | pending (phases 1, 6, 5) |
+
+Configuration: copy `.env.example` to `.env` (gitignored); values are loaded by `src/cora/settings.py`.
+Only profile names, regions and model ids go there; AWS credentials come from SSO profiles.
+
 ## Reproduce the analysis
 
 ```bash
-pip install -r requirements.txt
+uv sync --locked --group analysis
 # Configure the datathon S3 profile first (read-only; never commit keys):
 #   aws configure set aws_access_key_id    <KEY>    --profile cora-datathon
 #   aws configure set aws_secret_access_key <SECRET> --profile cora-datathon
 #   aws configure set region us-east-2               --profile cora-datathon
 # Then download a sample and run:
-python analysis/eda_sample.py --outdir analysis/figures
+uv run python analysis/eda_sample.py --outdir analysis/figures
 ```
 
 ## Status
@@ -52,7 +67,7 @@ python analysis/eda_sample.py --outdir analysis/figures
 - [ ] Tool/policy layer (auth, authorization, eligibility service).
 - [ ] LangGraph agent flow.
 - [ ] Evaluation harness + baseline.
-- [ ] GitHub remote + CI.
+- [x] Project skeleton (uv, ruff, pytest), settings, CI workflow (lint, tests, gitleaks, no-PDF check).
 
 ## Security
 
