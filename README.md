@@ -15,6 +15,17 @@ A focused, safe, measurable customer-service workflow with **controlled automati
 
 ## Documentation
 
+**Spec-driven plan** (Kiro specs, EARS criteria, full traceability):
+- [`.kiro/specs/cora/requirements.md`](.kiro/specs/cora/requirements.md) - 52 testable requirements.
+- [`.kiro/specs/cora/design.md`](.kiro/specs/cora/design.md) - architecture, state machine, policy engine, contracts.
+- [`.kiro/specs/cora/tasks.md`](.kiro/specs/cora/tasks.md) - phased implementation tasks.
+- [`documentation/SOURCE_REQUIREMENTS.md`](documentation/SOURCE_REQUIREMENTS.md) - all 84 obligations from the brief and data docs.
+- [`documentation/TRACEABILITY.md`](documentation/TRACEABILITY.md) - source -> requirement -> task -> evidence.
+- [`documentation/DECISIONS.md`](documentation/DECISIONS.md) - ADRs with alternatives and rationale.
+- [`documentation/DEVELOPMENT_PLAN.md`](documentation/DEVELOPMENT_PLAN.md) - process, 10-day schedule, quality gates, risks.
+- [`.kiro/steering/`](.kiro/steering/) - standing rules for every Kiro session on this repo.
+
+**Context & evidence:**
 - [`CORA_CONTEXT.md`](CORA_CONTEXT.md) - self-contained project context (challenge + dataset schema + rules). No PDFs needed.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - technical stack and local->AWS migration plan.
 - [`analysis/EDA_FINDINGS.md`](analysis/EDA_FINDINGS.md) - exploratory analysis, charts and workflow selection.
@@ -36,6 +47,7 @@ python analysis/eda_sample.py --outdir analysis/figures
 - [x] Project named, context captured, dataset mapped.
 - [x] Bucket analyzed; workflow chosen with evidence.
 - [x] Stack defined (`ARCHITECTURE.md`).
+- [x] Spec-driven plan: requirements, design, tasks, traceability (84/84 mapped), ADRs, steering.
 - [ ] Data contracts + quality checks.
 - [ ] Tool/policy layer (auth, authorization, eligibility service).
 - [ ] LangGraph agent flow.
