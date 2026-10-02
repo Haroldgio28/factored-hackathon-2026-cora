@@ -37,7 +37,7 @@ from .partitions import (
     available_partitions,
     partitions_to_process,
 )
-from .runner import process_partition, run_table
+from .runner import process_partition, raw_partition_dir, run_table
 from .schema_evolution import (
     SCHEMA_EVENTS_FILE,
     SchemaCheckResult,
@@ -48,15 +48,20 @@ from .schema_evolution import (
     raise_if_breaking,
 )
 from .state import (
+    MANIFESTS_DIR,
     load_freshness,
     load_watermarks,
+    manifest_path,
     save_freshness,
+    save_manifest,
     save_watermarks,
 )
 from .types import (
+    LINEAGE_COLUMNS,
     PIPELINE_VERSION,
     FreshnessRecord,
     PartitionResult,
+    RunManifest,
     RunSummary,
     SchemaChangeEvent,
     Watermarks,
@@ -64,10 +69,13 @@ from .types import (
 
 __all__ = [
     "EVENT_DATE_COLUMN",
+    "LINEAGE_COLUMNS",
+    "MANIFESTS_DIR",
     "PIPELINE_VERSION",
     "SCHEMA_EVENTS_FILE",
     "FreshnessRecord",
     "PartitionResult",
+    "RunManifest",
     "RunSummary",
     "SchemaChangeEvent",
     "SchemaCheckResult",
@@ -79,10 +87,13 @@ __all__ = [
     "load_freshness",
     "load_schema_events",
     "load_watermarks",
+    "manifest_path",
     "partitions_to_process",
     "process_partition",
     "raise_if_breaking",
+    "raw_partition_dir",
     "run_table",
     "save_freshness",
+    "save_manifest",
     "save_watermarks",
 ]

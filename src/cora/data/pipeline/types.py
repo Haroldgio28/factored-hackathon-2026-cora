@@ -18,11 +18,20 @@ Record shapes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 # Pipeline schema/behaviour version. Defined now so the 1.6 lineage seam can stamp it; it
 # also lets later readers detect a state file written by an older pipeline.
 PIPELINE_VERSION = "1.0"
+
+# Row-level lineage columns stamped onto every curated row at the 1.6 seam (REQ-27).
+# `_source_file` and `_pipeline_version` are run-invariant for a given partition; only
+# `_ingested_at` is wall-clock. They are treated as ONE group ("lineage columns") and are
+# EXCLUDED from the idempotency comparison: idempotency is asserted on the business/DATA
+# columns, not on this run-stamped metadata. Defined once here so production code and tests
+# share a single definition of the set.
+LINEAGE_COLUMNS = ("_source_file", "_ingested_at", "_pipeline_version")
 
 
 @dataclass(frozen=True)
@@ -189,6 +198,7 @@ class RunSummary:
     partitions: list[PartitionResult] = field(default_factory=list)
     schema_events: list[SchemaChangeEvent] = field(default_factory=list)
     schema_breaking: bool = False
+    manifest_path: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -204,7 +214,112 @@ class RunSummary:
             "partitions": [p.to_dict() for p in self.partitions],
             "schema_events": [e.to_dict() for e in self.schema_events],
             "schema_breaking": self.schema_breaking,
+            "manifest_path": self.manifest_path,
         }
+
+
+@dataclass(frozen=True)
+class RunManifest:
+    """Per-run lineage manifest for one `run_table(...)` call (task 1.6, REQ-27).
+
+    Captures the run's provenance by REUSING the `RunSummary`/`PartitionResult`/
+    `SchemaChangeEvent` records already in memory — it never recomputes counts and never
+    touches row data. Persisted (runtime, gitignored) at
+    `data/_state/manifests/<table>/<run_id>.json`. Records, per partition, the raw source
+    partition INPUT and the curated partition OUTPUT, so a curated partition can be traced
+    back to the exact raw directory it was derived from.
+    """
+
+    run_id: str
+    table: str
+    created_at: str  # == the run's `_ingested_at` (one value shared by all rows of the run)
+    pipeline_version: str
+    contracts_version: str
+    old_watermark: str | None
+    new_watermark: str | None
+    window_days: int
+    partitions: list[dict[str, object]]
+    totals: dict[str, int]
+    schema_events: list[SchemaChangeEvent]
+    schema_breaking: bool
+    freshness: dict[str, object]
+    dry_run: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "run_id": self.run_id,
+            "table": self.table,
+            "created_at": self.created_at,
+            "pipeline_version": self.pipeline_version,
+            "contracts_version": self.contracts_version,
+            "window": {
+                "old_watermark": self.old_watermark,
+                "new_watermark": self.new_watermark,
+                "window_days": self.window_days,
+            },
+            "partitions": list(self.partitions),
+            "totals": dict(self.totals),
+            "schema_events": [e.to_dict() for e in self.schema_events],
+            "schema_breaking": self.schema_breaking,
+            "freshness": dict(self.freshness),
+            "dry_run": self.dry_run,
+        }
+
+    @classmethod
+    def from_run(
+        cls,
+        summary: RunSummary,
+        *,
+        run_id: str,
+        ingested_at: str,
+        window_days: int,
+        contracts_version: str,
+        source_fn: Callable[[str, str], str],
+    ) -> RunManifest:
+        """Build a manifest from a `RunSummary` (reusing its already-computed records).
+
+        `source_fn(table, process_date_str) -> str` supplies the raw source partition path
+        (the D1 lineage directory) so the manifest's per-partition INPUT matches exactly what
+        was stamped onto `_source_file`. No counts are recomputed — they are read off each
+        `PartitionResult`.
+        """
+        partitions = [
+            {
+                "process_date": p.process_date,
+                "source": source_fn(p.table, p.process_date),
+                "curated_path": p.curated_path,
+                "quarantine_path": p.quarantine_path,
+                "rows_in": p.rows_in,
+                "rows_valid": p.rows_valid,
+                "rows_quarantined": p.rows_quarantined,
+                "duplicates_removed": p.duplicates_removed,
+                "rows_curated": p.rows_curated,
+                "schema_events": [e.to_dict() for e in p.schema_events],
+            }
+            for p in summary.partitions
+        ]
+        totals = {
+            "partitions_processed": summary.partitions_processed,
+            "rows_curated": summary.rows_curated,
+            "rows_quarantined": summary.rows_quarantined,
+            "duplicates_removed": summary.duplicates_removed,
+        }
+        return cls(
+            run_id=run_id,
+            table=summary.table,
+            created_at=ingested_at,
+            pipeline_version=PIPELINE_VERSION,
+            contracts_version=contracts_version,
+            old_watermark=summary.old_watermark,
+            new_watermark=summary.new_watermark,
+            window_days=window_days,
+            partitions=partitions,
+            totals=totals,
+            schema_events=list(summary.schema_events),
+            schema_breaking=summary.schema_breaking,
+            freshness=summary.freshness.to_dict(),
+            dry_run=summary.dry_run,
+        )
 
 
 def _opt_str(value: object) -> str | None:

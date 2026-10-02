@@ -21,6 +21,7 @@ import pytest
 
 from cora.data.datasource import LocalSource
 from cora.data.pipeline import (
+    LINEAGE_COLUMNS,
     FreshnessRecord,
     Watermarks,
     available_partitions,
@@ -190,10 +191,15 @@ def test_idempotent_partition_overwrite(tmp_path: Path) -> None:
     _run(raw, tmp_path)  # second run of the same window
     second = _curated_rows(tmp_path / "curated", "transactions", d)
     assert len(first) == len(second) == 2
+    # The 1.6 lineage columns are stamped on every curated row...
+    assert set(LINEAGE_COLUMNS).issubset(first.columns)
     pk = "transaction_id"
-    a = first.sort_values(pk).reset_index(drop=True)
-    b = second.sort_values(pk).reset_index(drop=True)
-    assert a.equals(b)  # identical content, not duplicated/appended
+    # ...but they are run-stamped metadata (`_ingested_at` is wall-clock) and are EXCLUDED
+    # from the idempotency comparison: idempotency is asserted on the business/DATA columns,
+    # so re-running overwrites (not appends) and the DATA is byte-identical across runs.
+    a = first.drop(columns=list(LINEAGE_COLUMNS)).sort_values(pk).reset_index(drop=True)
+    b = second.drop(columns=list(LINEAGE_COLUMNS)).sort_values(pk).reset_index(drop=True)
+    assert a.equals(b)  # identical DATA content, not duplicated/appended
 
 
 # --- Orchestration: quarantine bad rows, dedup latest-wins ----------------------------

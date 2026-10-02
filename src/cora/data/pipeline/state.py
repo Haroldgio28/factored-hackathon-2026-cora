@@ -20,11 +20,12 @@ import json
 import os
 from pathlib import Path
 
-from .types import FreshnessRecord, Watermarks
+from .types import FreshnessRecord, RunManifest, Watermarks
 
 STATE_DIR = Path("data/_state")
 WATERMARKS_FILE = STATE_DIR / "watermarks.json"
 FRESHNESS_FILE = STATE_DIR / "freshness.json"
+MANIFESTS_DIR = STATE_DIR / "manifests"
 
 
 def atomic_write_json(path: Path, payload: object) -> None:
@@ -70,3 +71,17 @@ def save_freshness(records: dict[str, FreshnessRecord], path: Path = FRESHNESS_F
     """Persist the per-table freshness records atomically to `path`."""
     payload = {table: record.to_dict() for table, record in records.items()}
     _atomic_write_json(Path(path), payload)
+
+
+def manifest_path(table: str, run_id: str, state_dir: Path = STATE_DIR) -> Path:
+    """Return the per-run lineage manifest path `<state_dir>/manifests/<table>/<run_id>.json`.
+
+    `run_id` is the filename-safe `run_YYYYMMDDTHHMMSSZ` (no `:`), so the path is
+    Windows-safe (task 1.6, REQ-27).
+    """
+    return Path(state_dir) / "manifests" / table / f"{run_id}.json"
+
+
+def save_manifest(manifest: RunManifest, path: Path) -> None:
+    """Persist a run manifest atomically to `path` (same tmp-file + os.replace pattern)."""
+    _atomic_write_json(Path(path), manifest.to_dict())

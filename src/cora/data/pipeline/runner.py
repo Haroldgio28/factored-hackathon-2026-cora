@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import shutil
 import time
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -52,10 +53,11 @@ from .partitions import (
     validate_fact,
 )
 from .schema_evolution import append_schema_events, check_schema, raise_if_breaking
-from .types import FreshnessRecord, PartitionResult, RunSummary
+from .types import PIPELINE_VERSION, FreshnessRecord, PartitionResult, RunManifest, RunSummary
 
 CURATED_ROOT = Path("data/curated")
 QUARANTINE_ROOT = Path("data/quarantine")
+RAW_ROOT = Path("data/raw_parquet")
 
 
 def _utc_now_iso() -> str:
@@ -70,6 +72,24 @@ def _default_run_id() -> str:
 
 def _curated_partition_dir(curated_root: Path, table: str, process_date: date) -> Path:
     return Path(curated_root) / table / f"process_date={process_date.isoformat()}"
+
+
+def raw_partition_dir(root: Path, table: str, process_date: date) -> str:
+    """Return the raw Hive partition DIRECTORY as a POSIX string (lineage `_source_file`).
+
+    `<root>/<table>/year=Y/month=MM/day=DD` with zero-padded month/day, matching
+    `datasource.LocalSource._source` / `partitions._PARTITION_RE`. This is the real unit the
+    pipeline reads (`DataSource.scan` prunes to exactly this directory), so it is the stable
+    identifier stamped on `_source_file` and reused as the manifest's per-partition INPUT —
+    one helper, so the row stamp and the manifest never drift (task 1.6, REQ-27).
+    """
+    return (
+        Path(root)
+        / table
+        / f"year={process_date.year}"
+        / f"month={process_date.month:02d}"
+        / f"day={process_date.day:02d}"
+    ).as_posix()
 
 
 def _max_event_date(curated_path: Path, table: str) -> str | None:
@@ -108,6 +128,8 @@ def process_partition(
     quarantine_root: Path = QUARANTINE_ROOT,
     state_dir: Path = state.STATE_DIR,
     run_id: str,
+    ingested_at: str | None = None,
+    root: Path = RAW_ROOT,
 ) -> PartitionResult:
     """Orchestrate one `(table, process_date)` partition and write it idempotently.
 
@@ -115,6 +137,11 @@ def process_partition(
     bad rows, dedups latest-wins, and writes the curated partition by deleting-then-rewriting
     its directory so a re-run overwrites rather than appends.
     """
+    # One UTC ISO timestamp for every row of this call. In a normal run `run_table` computes
+    # it ONCE and threads it in so all rows of the run share it; a standalone call falls back
+    # to a fresh timestamp here.
+    ingested_at = ingested_at or _utc_now_iso()
+
     # Read exactly one partition (memory-safe: year/month/day prune to a single directory).
     df = source.scan(
         table,
@@ -149,7 +176,20 @@ def process_partition(
         table, deduped, failure_cases, out_dir=quarantine_root, run_id=run_id
     )
 
-    # seam: 1.6 — stamp _source_file / _ingested_at / _pipeline_version here, before writing.
+    # seam: 1.6 — stamp row-level lineage onto the per-partition frame already in memory
+    # (bounded; never a full-table pass), BEFORE the idempotent write (REQ-27). `_source_file`
+    # is the raw Hive partition directory this curated partition was read from; `_ingested_at`
+    # is the run-constant UTC timestamp (one value shared by all rows of the run);
+    # `_pipeline_version` is the committed PIPELINE_VERSION. These are appended as the LAST
+    # columns and flow into the overwrite write below. They are run-stamped metadata and are
+    # EXCLUDED from the idempotency comparison (see types.LINEAGE_COLUMNS): idempotency is
+    # asserted on the business/DATA columns, not on this lineage. `.assign(...)` on a copy so
+    # the empty-frame (0 valid rows) case still produces the three columns.
+    valid_df = valid_df.assign(
+        _source_file=raw_partition_dir(root, table, process_date),
+        _ingested_at=ingested_at,
+        _pipeline_version=PIPELINE_VERSION,
+    )
 
     out_dir = _curated_partition_dir(curated_root, table, process_date)
     if out_dir.exists():
@@ -195,6 +235,9 @@ def run_table(
     """
     validate_fact(table)
     run_id = run_id or _default_run_id()
+    # One UTC timestamp for the whole run: stamped on every curated row (_ingested_at),
+    # recorded in the manifest and reused for the freshness record so all three agree.
+    ingested_at = _utc_now_iso()
 
     watermarks_path = Path(state_dir) / "watermarks.json"
     freshness_path = Path(state_dir) / "freshness.json"
@@ -232,6 +275,8 @@ def run_table(
                 quarantine_root=quarantine_root,
                 state_dir=state_dir,
                 run_id=run_id,
+                ingested_at=ingested_at,
+                root=root,
             )
         )
 
@@ -242,6 +287,7 @@ def run_table(
         results=results,
         curated_root=curated_root,
         dry_run=dry_run,
+        ingested_at=ingested_at,
     )
 
     if not dry_run and new_watermark is not None:
@@ -251,7 +297,7 @@ def run_table(
         all_freshness[table] = freshness
         state.save_freshness(all_freshness, freshness_path)
 
-    return RunSummary(
+    summary = RunSummary(
         table=table,
         partitions_processed=len(results),
         rows_curated=sum(r.rows_curated for r in results),
@@ -265,6 +311,26 @@ def run_table(
         schema_events=[ev for r in results for ev in r.schema_events],
         schema_breaking=any(r.schema_breaking for r in results),
     )
+
+    # seam: 1.6 — per-run lineage manifest (REQ-27). Assembled from the already-collected
+    # RunSummary AFTER the loop, so it touches NO row data (memory-safe by construction). A
+    # dry-run writes no curated data and no manifest. The manifest's per-partition INPUT path
+    # is computed with the SAME `raw_partition_dir` helper used to stamp `_source_file`, so
+    # the rows and the manifest can never drift.
+    if not dry_run:
+        out_path = state.manifest_path(table, run_id, state_dir)
+        manifest = RunManifest.from_run(
+            summary,
+            run_id=run_id,
+            ingested_at=ingested_at,
+            window_days=window_days,
+            contracts_version=contracts.CONTRACTS_VERSION,
+            source_fn=lambda t, d: raw_partition_dir(root, t, date.fromisoformat(d)),
+        )
+        state.save_manifest(manifest, out_path)
+        summary = replace(summary, manifest_path=out_path.as_posix())
+
+    return summary
 
 
 def _advance_watermark(old: date | None, targets: list[date]) -> date | None:
@@ -282,8 +348,13 @@ def _build_freshness(
     results: list[PartitionResult],
     curated_root: Path,
     dry_run: bool,
+    ingested_at: str,
 ) -> FreshnessRecord:
-    """Assemble the per-table `FreshnessRecord` for this run."""
+    """Assemble the per-table `FreshnessRecord` for this run.
+
+    `ingested_at` is the run-constant timestamp (reused so the freshness record, the manifest
+    and every row's `_ingested_at` agree instead of each getting its own wall-clock read).
+    """
     wm_str = new_watermark.isoformat() if new_watermark else None
     max_event_date = wm_str
     if not dry_run and new_watermark is not None:
@@ -296,7 +367,7 @@ def _build_freshness(
         max_partition_date=wm_str,
         max_event_date=max_event_date,
         watermark=wm_str,
-        last_ingested_at=_utc_now_iso(),
+        last_ingested_at=ingested_at,
         curated_rows=sum(r.rows_curated for r in results),
     )
 
@@ -309,7 +380,9 @@ def default_source(root: Path = Path("data/raw_parquet")) -> LocalSource:
 __all__ = [
     "CURATED_ROOT",
     "QUARANTINE_ROOT",
+    "RAW_ROOT",
     "default_source",
     "process_partition",
+    "raw_partition_dir",
     "run_table",
 ]

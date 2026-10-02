@@ -31,6 +31,7 @@ def _format_summary(summary: RunSummary) -> str:
     fr = summary.freshness
     mode = " [dry-run]" if summary.dry_run else ""
     breaking = " schema_breaking=True" if summary.schema_breaking else ""
+    manifest = summary.manifest_path if summary.manifest_path else "-"
     return (
         f"{summary.table}{mode}: "
         f"partitions={summary.partitions_processed} "
@@ -39,7 +40,8 @@ def _format_summary(summary: RunSummary) -> str:
         f"dedup_removed={summary.duplicates_removed} "
         f"schema_events={len(summary.schema_events)}{breaking} "
         f"watermark {summary.old_watermark} -> {summary.new_watermark} "
-        f"| freshness max_event_date={fr.max_event_date} last_ingested_at={fr.last_ingested_at}"
+        f"| freshness max_event_date={fr.max_event_date} last_ingested_at={fr.last_ingested_at} "
+        f"| manifest={manifest}"
     )
 
 
