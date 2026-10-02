@@ -30,6 +30,18 @@ A focused, safe, measurable customer-service workflow with **controlled automati
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - technical stack and local->AWS migration plan.
 - [`analysis/EDA_FINDINGS.md`](analysis/EDA_FINDINGS.md) - exploratory analysis, charts and workflow selection.
 
+## Diagrams
+
+Architecture and flow diagrams live under [`analysis/figures/`](analysis/figures/) as interactive, self-contained HTML (open in a browser) with a committed PNG for inline viewing. The source `*.dataflow.json` specs are versioned alongside each diagram.
+
+### Phase 1 - Data platform pipeline
+
+How a daily `process_date` partition is turned into trustworthy curated data: read one partition at a time, dedup latest-wins, validate against the contract, quarantine bad rows, and write an idempotent curated partition with row-level lineage - plus watermark/freshness state and a per-run manifest. Fail-closed on a breaking schema change.
+
+![CORA Phase 1 data platform pipeline](analysis/figures/pipeline_phase1.png)
+
+Interactive version: [`analysis/figures/pipeline_phase1.html`](analysis/figures/pipeline_phase1.html) (theme toggle, zoom/pan, relationship tracing). Covers tasks 1.1-1.6; see [`.kiro/specs/cora/tasks.md`](.kiro/specs/cora/tasks.md).
+
 ## Setup
 
 Python 3.12 and [uv](https://docs.astral.sh/uv/). Dependencies are pinned in `uv.lock`.
