@@ -18,17 +18,14 @@ Scenarios (REQ-26), each asserted with the EXPECTED-correct outcome stated inlin
   collapsed latest-wins (not quarantined); (d) schema change BOTH kinds — additive accepted +
   logged, breaking fails closed with no curated partition.
 
-KNOWN LIMITATION (see BUG-001 and the fixture README). The two schema-change scenarios
-(additive + breaking) are currently BLOCKED by a data-layer bug: `LocalSource._source` reads a
-fact as ONE DuckDB glob over `<table>/**/*.parquet` (`hive_partitioning=true`, no
-`union_by_name`), so DuckDB infers a single schema across heterogeneous partitions even when
-the pipeline filters to one partition. An additive column present in only one partition is
-silently dropped (no event, not curated); a partition missing a required column raises a raw
-DuckDB IOException at the read instead of the designed fail-closed `SchemaEvolutionError`.
-These two tests therefore assert the EXPECTED-CORRECT behaviour and are marked
-`xfail(strict=True)`: they document what SHOULD happen and will flip to XPASS (failing the
-suite) the moment the data-layer fix lands, forcing them to become normal passing tests then.
-The assertions are NOT weakened to match the buggy behaviour.
+BUG-001 (FIXED). The two schema-change scenarios (additive + breaking) exercise heterogeneous
+schemas under one fact table. They used to be blocked by a data-layer bug — `LocalSource._source`
+read a fact as ONE DuckDB glob over `<table>/**/*.parquet` with no per-partition schema isolation
+— and were marked `xfail(strict=True)`. The fix (per-partition schema-isolated reads in
+`src/cora/data/datasource.py`, `LocalSource._source`/`S3Source._source`) makes them pass as normal
+tests, so the markers are gone. The assertions were NOT weakened: they still encode the
+EXPECTED-CORRECT behaviour (additive accepted + logged, breaking fails closed with a clear
+`SchemaEvolutionError` and no curated partition).
 """
 
 from __future__ import annotations
@@ -48,12 +45,6 @@ from cora.data.pipeline import (
     load_watermarks,
     process_partition,
     run_table,
-)
-
-# The follow-up data-layer task that unblocks the two schema scenarios.
-BUG_001 = (
-    "REQ-25 additive/breaking schema evolution blocked by LocalSource multi-file glob scan "
-    "without per-partition schema isolation — see BUG-001; fix is a separate data-layer task"
 )
 
 
@@ -202,15 +193,14 @@ def test_duplicate_redelivery_collapsed_not_quarantined(tmp_path: Path) -> None:
 # --- (d-additive) New nullable column accepted + logged -------------------------------
 
 
-@pytest.mark.xfail(reason=BUG_001, strict=True)
 def test_additive_column_accepted_and_logged(tmp_path: Path) -> None:
     """R5: a new nullable column is accepted (strict=False), a SchemaChangeEvent is logged,
     and the column reaches curated.
 
-    EXPECTED-CORRECT behaviour (asserted, NOT weakened). Currently BLOCKED by BUG-001: the
-    whole-table glob scan drops `promo_flag` before the pipeline sees it, so no event is
-    emitted and the column never reaches curated. xfail(strict=True) so this flips to XPASS
-    (failing the suite) once the data-layer fix lands.
+    EXPECTED-CORRECT behaviour (asserted, NOT weakened). Unblocked by the BUG-001 fix
+    (per-partition schema-isolated reads): the additive `promo_flag` present only in the
+    2026-06-12 partition now survives the read, so the event is emitted and the column reaches
+    curated.
     """
     raw = tmp_path / "raw"
     curated = tmp_path / "curated"
@@ -235,17 +225,16 @@ def test_additive_column_accepted_and_logged(tmp_path: Path) -> None:
 # --- (d-breaking) Required column missing -> fail-closed ------------------------------
 
 
-@pytest.mark.xfail(reason=BUG_001, strict=True)
 def test_breaking_column_fails_closed(tmp_path: Path) -> None:
     """R6: a partition missing a required column fails closed with a clear
     `SchemaEvolutionError` naming the column, writes NO curated partition, and leaves prior
     curated state intact.
 
-    EXPECTED-CORRECT behaviour (asserted, NOT weakened). Currently BLOCKED by BUG-001: the
-    whole-table glob scan raises a raw DuckDB IOException at the READ, before the pipeline's
-    own check_schema/raise_if_breaking fail-closed gate runs, so the designed
-    SchemaEvolutionError is never produced. xfail(strict=True) so this flips to XPASS (failing
-    the suite) once the data-layer fix lands.
+    EXPECTED-CORRECT behaviour (asserted, NOT weakened). Unblocked by the BUG-001 fix
+    (per-partition schema-isolated reads): the 2026-06-13 partition missing `customer_id` is
+    read in isolation, so the column is genuinely absent (not NULL-filled from a sibling) and
+    the pipeline's check_schema/raise_if_breaking fail-closed gate produces the designed
+    SchemaEvolutionError.
     """
     raw = tmp_path / "raw"
     curated = tmp_path / "curated"

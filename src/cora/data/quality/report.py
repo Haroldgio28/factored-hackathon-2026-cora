@@ -39,10 +39,18 @@ class _SampledFactSource(DataSource):
         sample = source.fetch_df(fact, year=year, month=month, limit=limit)
         self._con.register(f"sample_{fact}", sample)
 
-    def _source(self, table: str) -> str:
+    def _source(
+        self,
+        table: str,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        day: int | None = None,
+    ) -> str:
         if table == self._fact:
-            return f"sample_{self._fact}"
-        return self._real._source(table)  # FK parent dimension, read in place
+            return f"sample_{self._fact}"  # pre-registered sample; partition args not applicable
+        # FK parent dimension, read in place (dimensions ignore partition args).
+        return self._real._source(table, year=year, month=month, day=day)
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
         return self._con

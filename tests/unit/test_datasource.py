@@ -101,3 +101,63 @@ def test_s3_defaults_from_settings() -> None:
 def test_s3_live_read() -> None:
     src = S3Source()
     assert src.count("customers") > 0
+
+
+def test_local_per_partition_schema_isolation(tmp_path: Path) -> None:
+    """BUG-001 fix: a fully-specified single-partition fact read is schema-isolated to THAT
+    partition's files, so an added column survives and a missing column is not borrowed from a
+    sibling partition.
+
+    Builds its own tiny Hive-partitioned landing under tmp_path (never touches real data/):
+      - partition A (2026-06-12) carries an EXTRA nullable column `promo_flag`;
+      - partition B (2026-06-13) is MISSING `customer_id` that A has.
+    Hive value formats mirror the pipeline/fixture convention (year INT, month/day zero-padded).
+    """
+    table = "transactions"
+    root = tmp_path / "raw"
+
+    def _write(year: int, month: int, day: int, df: pd.DataFrame) -> None:
+        part = root / table / f"year={year}" / f"month={month:02d}" / f"day={day:02d}"
+        part.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(part / f"{table}_{year}{month:02d}{day:02d}.parquet", index=False)
+
+    # Partition A: has promo_flag and customer_id.
+    _write(
+        2026,
+        6,
+        12,
+        pd.DataFrame(
+            {
+                "transaction_id": ["T1", "T2"],
+                "customer_id": ["C1", "C2"],
+                "amount": ["10.0", "20.0"],
+                "promo_flag": ["spring", "spring"],
+            }
+        ),
+    )
+    # Partition B: missing customer_id (and no promo_flag).
+    _write(
+        2026,
+        6,
+        13,
+        pd.DataFrame(
+            {
+                "transaction_id": ["T3"],
+                "amount": ["30.0"],
+            }
+        ),
+    )
+
+    src = LocalSource(root=root)
+
+    # (a) Partition A returns the extra column.
+    df_a = src.fetch_df(table, year=2026, month=6, day=12, limit=10)
+    assert "promo_flag" in df_a.columns
+
+    # (b) Partition B does NOT borrow A's schema: neither promo_flag nor customer_id present.
+    df_b = src.fetch_df(table, year=2026, month=6, day=13, limit=10)
+    assert "promo_flag" not in df_b.columns
+    assert "customer_id" not in df_b.columns
+
+    # (c) The read succeeds (no cross-file schema-mismatch IOException) with B's row count.
+    assert src.count(table, year=2026, month=6, day=13) == 1

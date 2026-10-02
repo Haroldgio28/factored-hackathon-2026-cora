@@ -58,22 +58,27 @@ reprocessing bound is `2026-06-09`; partitions older than that are never reproce
 PKs: `T0` (out-of-window), `T1`/`T2` (day-N), `T3` (second day + duplicate + additive), `T4`
 (late arrival), `T5` (additive), `T6` (breaking).
 
-## Known limitation (BUG-001)
+## Known limitation (BUG-001) — FIXED
 
-The fixture DATA represents all five REQ-26 scenarios, but the two **schema-change** scenarios
-(additive column, breaking column) do not yet pass against the current pipeline — they expose a
-real data-layer bug, tracked separately as **BUG-001**
-(`.agents/tasks/BUG-001-multifile-scan.md`). Their tests
-(`test_additive_column_accepted_and_logged`, `test_breaking_column_fails_closed`) are marked
-`pytest.mark.xfail(strict=True)`: they assert the EXPECTED-correct behaviour (the assertions are
-NOT weakened to match the bug) and will flip to XPASS — failing the suite — once the fix lands,
-forcing them to become normal passing tests then.
+All five REQ-26 scenarios now pass as normal tests, including the two **schema-change**
+scenarios (additive column, breaking column). They previously exposed a real data-layer bug
+tracked as **BUG-001** (`.agents/tasks/BUG-001-multifile-scan.md`), and their tests
+(`test_additive_column_accepted_and_logged`, `test_breaking_column_fails_closed`) were marked
+`pytest.mark.xfail(strict=True)`. The fix landed, so the markers are gone and the tests pass
+as normal tests with their original (unweakened) EXPECTED-correct assertions.
 
-Root cause: `LocalSource._source` reads a fact as one DuckDB glob over
+Original root cause: `LocalSource._source` read a fact as one DuckDB glob over
 `<table>/**/*.parquet` with `hive_partitioning=true` and no per-partition schema isolation, so a
-column present in only one partition is dropped (additive) and a partition missing a required
-column raises a raw DuckDB read error before the pipeline's fail-closed schema gate runs
-(breaking). `union_by_name=true` is the WRONG fix because it NULL-fills the missing required
-column and defeats the fail-closed check — see BUG-001 for the proposed per-partition read fix.
-The other three scenarios (day-N, late arrival within/out of window, duplicate collapsed
-latest-wins not quarantined) pass as normal tests.
+column present in only one partition was dropped (additive) and a partition missing a required
+column raised a raw DuckDB read error before the pipeline's fail-closed schema gate ran
+(breaking). `union_by_name=true` was the WRONG fix because it NULL-fills the missing required
+column and defeats the fail-closed check.
+
+The fix (`src/cora/data/datasource.py`, `LocalSource._source` and the mirrored
+`S3Source._source`): when a fact is read with a FULLY-specified single partition (year AND
+month AND day), `read_parquet` is pointed at that partition's files
+(`<table>/year=Y/month=MM/day=DD/*.parquet`) instead of the whole-table `**` glob. The added
+column then survives (its own file carries it) and a missing required column is genuinely absent
+from the read (not NULL-filled), so the pipeline's `check_schema`/`raise_if_breaking` fires the
+designed `SchemaEvolutionError` → fail-closed, no curated partition. Partial specs (year only,
+year+month, or none) keep the whole/subtree `**` glob, and the narrowing keeps reads bounded.

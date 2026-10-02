@@ -101,8 +101,21 @@ class DataSource(ABC):
     """Read-only, memory-safe access to the LATAM Bank dataset (design sections 6/7)."""
 
     @abstractmethod
-    def _source(self, table: str) -> str:
-        """Return the engine-specific `read_parquet(...)` expression for `table`."""
+    def _source(
+        self,
+        table: str,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        day: int | None = None,
+    ) -> str:
+        """Return the engine-specific `read_parquet(...)` expression for `table`.
+
+        When a FACT is read with a FULLY-specified single partition (year AND month AND day
+        all given), the expression is narrowed to that partition's files so the read is
+        per-partition schema-isolated (see BUG-001). A partial spec (year only, year+month,
+        or none) keeps the whole-table/subtree glob.
+        """
 
     @abstractmethod
     def _connect(self) -> duckdb.DuckDBPyConnection:
@@ -122,7 +135,7 @@ class DataSource(ABC):
         """Return a lazy DuckDB relation; nothing is materialized until fetched."""
         _validate_table(table)
         sql = _build_sql(
-            self._source(table),
+            self._source(table, year=year, month=month, day=day),
             table,
             columns=columns,
             year=year,
@@ -145,7 +158,7 @@ class DataSource(ABC):
         """Return the row count for `table` under the given filters."""
         _validate_table(table)
         inner = _build_sql(
-            self._source(table),
+            self._source(table, year=year, month=month, day=day),
             table,
             columns=None,
             year=year,
@@ -207,9 +220,30 @@ class LocalSource(DataSource):
         self.threads = threads
         self._con: duckdb.DuckDBPyConnection | None = None
 
-    def _source(self, table: str) -> str:
+    def _source(
+        self,
+        table: str,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        day: int | None = None,
+    ) -> str:
         if table in FACTS:
-            path = str(self.root / table / "**" / "*.parquet").replace("\\", "/")
+            if year is not None and month is not None and day is not None:
+                # Per-partition schema isolation (BUG-001): a fully-specified single partition
+                # points read_parquet at THAT partition's files, so an added column survives
+                # and a missing required column is genuinely absent (not NULL-filled from a
+                # sibling). Hive value formats mirror pipeline/fixture convention (D4).
+                part = (
+                    self.root
+                    / table
+                    / f"year={int(year)}"
+                    / f"month={int(month):02d}"
+                    / f"day={int(day):02d}"
+                )
+                path = str(part / "*.parquet").replace("\\", "/")
+            else:
+                path = str(self.root / table / "**" / "*.parquet").replace("\\", "/")
             return f"read_parquet('{path}', hive_partitioning=true)"
         path = str(self.root / f"{table}.parquet").replace("\\", "/")
         return f"read_parquet('{path}')"
@@ -255,9 +289,21 @@ class S3Source(DataSource):
         self.threads = threads
         self._con: duckdb.DuckDBPyConnection | None = None
 
-    def _source(self, table: str) -> str:
+    def _source(
+        self,
+        table: str,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        day: int | None = None,
+    ) -> str:
         base = f"s3://{self.bucket}/data"
         if table in FACTS:
+            # Mirror LocalSource per-partition narrowing (BUG-001) so Local and S3 do not
+            # drift (REQ-20/REQ-51). The path is a pure string; no network call is made here.
+            if year is not None and month is not None and day is not None:
+                part = f"{base}/{table}/year={int(year)}/month={int(month):02d}/day={int(day):02d}"
+                return f"read_parquet('{part}/*.parquet', hive_partitioning=true)"
             return f"read_parquet('{base}/{table}/**/*.parquet', hive_partitioning=true)"
         return f"read_parquet('{base}/{table}.parquet')"
 
