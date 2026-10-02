@@ -187,3 +187,6 @@ Docs/
 # Downloaded dataset (large, derived) - anchored to the repo root so scripts/data/ is still versioned
 /data/
 *.parquet
+
+# Workflow/agent scratch directory (orchestration tooling, not project source)
+.agents/

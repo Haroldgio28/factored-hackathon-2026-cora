@@ -41,9 +41,10 @@ Rules for every task:
 
 ## Phase 1 - Data platform (Days 1-3)
 
-- [ ] **1.1 DataSource interface**
+- [x] **1.1 DataSource interface**
   - `LocalSource` (sample folder) and `S3Source` (profile `cora-datathon`); `scripts/fetch_sample` pulls a reproducible sample (fixed months, all dimensions).
-  - Done (2026-10-01): the full history of all 13 tables is landed as raw Parquet by `scripts/data/fetch_to_parquet.py` (replaces the sample fetch; ~0.9 GB) and checked by `scripts/data/validate_landing.py` (`documentation/reports/landing_validation.md`). Pending: the `DataSource` interface itself.
+  - Raw landing (2026-10-01): the full history of all 13 tables is landed as raw Parquet by `scripts/data/fetch_to_parquet.py` (replaces the sample fetch; ~0.9 GB) and checked by `scripts/data/validate_landing.py` (`documentation/reports/landing_validation.md`).
+  - Done (2026-10-01): `src/cora/data/` with `DataSource` (ABC), `LocalSource` (DuckDB over `data/raw_parquet/`, INT year/month/day partition filters) and `S3Source` (read-only profile `cora-datathon`, no network on construction, live read opt-in via `CORA_RUN_S3_LIVE=1`). Methods `scan` (lazy DuckDB relation) / `count` / `fetch_df` (required positive `limit`); table names validated against a FACTS/DIMENSIONS registry (SQL-injection guard). Evidence: `tests/unit/test_datasource.py` (9 passed, 1 skipped); `uv run pytest` 14 passed / 1 skipped, ruff clean.
   - _Requirements: REQ-20_
 - [ ] **1.2 Contracts for all 13 tables**
   - Pandera schemas from the data dictionary (types, nullability, PK, enums, ranges); contract tests.
@@ -64,8 +65,9 @@ Rules for every task:
 - [ ] **1.7 Labeled update-correctness fixture**
   - `tests/fixtures/incremental/` (TEAM-GENERATED banner): day N, late arrival, duplicate re-delivery, new column, broken column; tests assert the curated state after each step.
   - _Requirements: REQ-26_
-- [ ] **1.8 Extend EDA (problem evidence)**
+- [x] **1.8 Extend EDA (problem evidence)**
   - Transcripts (utterance lengths, language, intents vocabulary, label quality), transactions (status mix, fraud score distribution, currencies), surveys (CSAT by category), data-quality findings; update `analysis/EDA_FINDINGS.md`.
+  - Done (2026-10-01): `analysis/eda_full_history.py` (memory-safe DuckDB over Parquet, `memory_limit=2GB`, aggregated/sampled SQL; `digital_events` 15.6M as aggregates). Added `analysis/EDA_FINDINGS.md` section 10 (10.1 cross-table joinability, 10.2 temporal/behavioral, 10.3 capability→table→column map, 10.4 escalation evidence, 10.5 full-history data-quality); sections 1-9 untouched. Evidence: `analysis/figures/{10_..15_}.png` + `metrics.json`. Business findings: FCR Transaccional 91.5% / Producto 89.6% vs Queja 43.6%; `complaints.origin_interaction_id` 0% full-history (no dispute-intake join); freeze/unfreeze PARTIAL (no native field, via `product_status` + sandbox); all raw columns landed as VARCHAR (contracts must cast). Approved by semantic review.
   - _Requirements: REQ-01, REQ-02_
 
 ## Phase 2 - Identity, tools & policy (Days 3-4)
