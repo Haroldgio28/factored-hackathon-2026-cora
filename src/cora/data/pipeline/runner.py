@@ -51,6 +51,7 @@ from .partitions import (
     partitions_to_process,
     validate_fact,
 )
+from .schema_evolution import append_schema_events, check_schema, raise_if_breaking
 from .types import FreshnessRecord, PartitionResult, RunSummary
 
 CURATED_ROOT = Path("data/curated")
@@ -105,6 +106,7 @@ def process_partition(
     *,
     curated_root: Path = CURATED_ROOT,
     quarantine_root: Path = QUARANTINE_ROOT,
+    state_dir: Path = state.STATE_DIR,
     run_id: str,
 ) -> PartitionResult:
     """Orchestrate one `(table, process_date)` partition and write it idempotently.
@@ -122,7 +124,15 @@ def process_partition(
     ).df()
     rows_in = len(df)
 
-    # seam: 1.5 — schema_check(table, df) will slot in here, before contract validation.
+    # seam: 1.5 — schema-evolution check (REQ-25), BEFORE dedup/validate and reading only
+    # column NAMES (never row content). A BREAKING change (a required contract column missing)
+    # raises SchemaEvolutionError, which propagates out so NO curated partition is written
+    # (fail-closed). An ADDITIVE change (extra column, or an optional column absent) is logged
+    # as a schema-change event and processing CONTINUES — the extra nullable column flows
+    # through contract validation (contracts are strict=False). Stage order below is unchanged.
+    schema_result = check_schema(table, df, process_date=process_date.isoformat())
+    raise_if_breaking(schema_result)
+    append_schema_events(schema_result.events, Path(state_dir) / "schema_events.json")
 
     # Dedup FIRST (design §7 / REQ-23): collapse duplicate-redeliveries latest-wins on the
     # raw batch before validation, so a repeated arrival is deduped (not quarantined) and the
@@ -158,6 +168,8 @@ def process_partition(
         rows_curated=len(valid_df),
         curated_path=out_file.as_posix(),
         quarantine_path=qres.out_path,
+        schema_events=schema_result.events,
+        schema_breaking=schema_result.is_breaking,
     )
 
 
@@ -218,6 +230,7 @@ def run_table(
                 process_date,
                 curated_root=curated_root,
                 quarantine_root=quarantine_root,
+                state_dir=state_dir,
                 run_id=run_id,
             )
         )
@@ -249,6 +262,8 @@ def run_table(
         freshness=freshness,
         dry_run=dry_run,
         partitions=results,
+        schema_events=[ev for r in results for ev in r.schema_events],
+        schema_breaking=any(r.schema_breaking for r in results),
     )
 
 

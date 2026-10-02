@@ -30,12 +30,14 @@ def _format_summary(summary: RunSummary) -> str:
     """One line per table: partitions, curated/quarantined/dedup counts, watermark, freshness."""
     fr = summary.freshness
     mode = " [dry-run]" if summary.dry_run else ""
+    breaking = " schema_breaking=True" if summary.schema_breaking else ""
     return (
         f"{summary.table}{mode}: "
         f"partitions={summary.partitions_processed} "
         f"curated={summary.rows_curated} "
         f"quarantined={summary.rows_quarantined} "
         f"dedup_removed={summary.duplicates_removed} "
+        f"schema_events={len(summary.schema_events)}{breaking} "
         f"watermark {summary.old_watermark} -> {summary.new_watermark} "
         f"| freshness max_event_date={fr.max_event_date} last_ingested_at={fr.last_ingested_at}"
     )

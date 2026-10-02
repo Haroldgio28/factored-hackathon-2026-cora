@@ -38,6 +38,15 @@ from .partitions import (
     partitions_to_process,
 )
 from .runner import process_partition, run_table
+from .schema_evolution import (
+    SCHEMA_EVENTS_FILE,
+    SchemaCheckResult,
+    SchemaEvolutionError,
+    append_schema_events,
+    check_schema,
+    load_schema_events,
+    raise_if_breaking,
+)
 from .state import (
     load_freshness,
     load_watermarks,
@@ -49,21 +58,30 @@ from .types import (
     FreshnessRecord,
     PartitionResult,
     RunSummary,
+    SchemaChangeEvent,
     Watermarks,
 )
 
 __all__ = [
     "EVENT_DATE_COLUMN",
     "PIPELINE_VERSION",
+    "SCHEMA_EVENTS_FILE",
     "FreshnessRecord",
     "PartitionResult",
     "RunSummary",
+    "SchemaChangeEvent",
+    "SchemaCheckResult",
+    "SchemaEvolutionError",
     "Watermarks",
+    "append_schema_events",
     "available_partitions",
+    "check_schema",
     "load_freshness",
+    "load_schema_events",
     "load_watermarks",
     "partitions_to_process",
     "process_partition",
+    "raise_if_breaking",
     "run_table",
     "save_freshness",
     "save_watermarks",

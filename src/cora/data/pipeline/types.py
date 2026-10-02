@@ -26,6 +26,55 @@ PIPELINE_VERSION = "1.0"
 
 
 @dataclass(frozen=True)
+class SchemaChangeEvent:
+    """One accepted (non-breaking) schema-change observation on a partition (task 1.5, REQ-25).
+
+    Emitted by `schema_evolution.check_schema` when an additive column appears (kind=`added`)
+    or an OPTIONAL contract column is absent (kind=`removed`). The `type_change` kind is
+    defined for a future curated/typed reference layer but is NEVER emitted from the raw
+    all-VARCHAR landing path (type incompatibility is handled by `contracts.validate` /
+    quarantine); see `schema_evolution` for the landing-aware rationale.
+
+    Persisted append-style to `data/_state/schema_events.json` (runtime data, gitignored).
+    """
+
+    table: str
+    kind: str  # "added" | "removed" | "type_change"
+    column: str
+    detail: str
+    process_date: str | None
+    detected_at: str
+    pipeline_version: str
+    contracts_version: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "table": self.table,
+            "kind": self.kind,
+            "column": self.column,
+            "detail": self.detail,
+            "process_date": self.process_date,
+            "detected_at": self.detected_at,
+            "pipeline_version": self.pipeline_version,
+            "contracts_version": self.contracts_version,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> SchemaChangeEvent:
+        """Rebuild an event from its JSON object (inverse of `to_dict`)."""
+        return cls(
+            table=str(data["table"]),
+            kind=str(data["kind"]),
+            column=str(data["column"]),
+            detail=str(data["detail"]),
+            process_date=_opt_str(data.get("process_date")),
+            detected_at=str(data["detected_at"]),
+            pipeline_version=str(data["pipeline_version"]),
+            contracts_version=str(data["contracts_version"]),
+        )
+
+
+@dataclass(frozen=True)
 class PartitionResult:
     """Outcome of orchestrating one `(table, process_date)` partition."""
 
@@ -38,6 +87,8 @@ class PartitionResult:
     rows_curated: int
     curated_path: str | None = None
     quarantine_path: str | None = None
+    schema_events: list[SchemaChangeEvent] = field(default_factory=list)
+    schema_breaking: bool = False
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -50,6 +101,8 @@ class PartitionResult:
             "rows_curated": self.rows_curated,
             "curated_path": self.curated_path,
             "quarantine_path": self.quarantine_path,
+            "schema_events": [e.to_dict() for e in self.schema_events],
+            "schema_breaking": self.schema_breaking,
         }
 
 
@@ -134,6 +187,8 @@ class RunSummary:
     freshness: FreshnessRecord
     dry_run: bool
     partitions: list[PartitionResult] = field(default_factory=list)
+    schema_events: list[SchemaChangeEvent] = field(default_factory=list)
+    schema_breaking: bool = False
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -147,6 +202,8 @@ class RunSummary:
             "freshness": self.freshness.to_dict(),
             "dry_run": self.dry_run,
             "partitions": [p.to_dict() for p in self.partitions],
+            "schema_events": [e.to_dict() for e in self.schema_events],
+            "schema_breaking": self.schema_breaking,
         }
 
 

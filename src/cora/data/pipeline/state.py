@@ -27,12 +27,20 @@ WATERMARKS_FILE = STATE_DIR / "watermarks.json"
 FRESHNESS_FILE = STATE_DIR / "freshness.json"
 
 
-def _atomic_write_json(path: Path, payload: object) -> None:
-    """Write `payload` as JSON to `path` atomically (tmp file + os.replace)."""
+def atomic_write_json(path: Path, payload: object) -> None:
+    """Write `payload` as JSON to `path` atomically (tmp file + os.replace).
+
+    Shared with the schema-events log writer (task 1.5) so the atomic tmp-file + `os.replace`
+    pattern is defined once.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=1, default=str), encoding="utf-8")
     os.replace(tmp, path)
+
+
+# Backwards-compatible private alias (kept so existing call sites don't change).
+_atomic_write_json = atomic_write_json
 
 
 def load_watermarks(path: Path = WATERMARKS_FILE) -> Watermarks:
