@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "CORA Phase 1 Data Platform Pipeline",
+    "viewBox": [1080, 560],
+    "quality_profile": "showcase"
+  },
+  "stages": [
+    { "label": "Source" },
+    { "label": "Ingest" },
+    { "label": "Validate" },
+    { "label": "Curate" },
+    { "label": "State & evidence" }
+  ],
+  "nodes": [
+    { "id": "raw", "type": "database", "label": "Raw landing", "sublabel": "Parquet, Hive partitions", "stage": 0, "row": 1, "tag": "immutable", "width": 136 },
+    { "id": "source", "type": "backend", "label": "DataSource", "sublabel": "per-partition read", "stage": 1, "row": 1, "tag": "task 1.1", "width": 136 },
+    { "id": "schema", "type": "security", "label": "Schema check", "sublabel": "additive vs breaking", "stage": 2, "row": 0, "tag": "task 1.5", "width": 150 },
+    { "id": "dedup", "type": "backend", "label": "Dedup then validate", "sublabel": "latest-wins, Pandera", "stage": 2, "row": 1, "tag": "tasks 1.2 / 1.3", "width": 150 },
+    { "id": "curated", "type": "database", "label": "Curated partition", "sublabel": "idempotent + lineage", "stage": 3, "row": 1, "tag": "tasks 1.4 / 1.6", "width": 152 },
+    { "id": "quarantine", "type": "database", "label": "Quarantine", "sublabel": "bad rows + reason", "stage": 3, "row": 2, "tag": "task 1.3", "width": 150 },
+    { "id": "state", "type": "cloud", "label": "Watermark + freshness", "sublabel": "state JSON", "stage": 4, "row": 0, "tag": "task 1.4", "width": 164 },
+    { "id": "manifest", "type": "cloud", "label": "Run manifest", "sublabel": "counts + checks", "stage": 4, "row": 2, "tag": "task 1.6", "width": 152 }
+  ],
+  "flows": [
+    { "id": "raw-source", "from": "raw", "to": "source", "label": "scan partition", "classification": "memory-safe", "variant": "emphasis" },
+    { "id": "source-schema", "from": "source", "to": "schema", "label": "columns", "classification": "isolated", "variant": "security" },
+    { "id": "source-dedup", "from": "source", "to": "dedup", "label": "raw batch", "classification": "per date", "variant": "emphasis", "route": "straight", "labelDy": 26 },
+    { "id": "schema-dedup", "from": "schema", "to": "dedup", "label": "accepted", "classification": "breaking fails closed", "variant": "security", "labelAt": [530, 200] },
+    { "id": "dedup-curated", "from": "dedup", "to": "curated", "label": "valid rows", "classification": "coerced", "variant": "emphasis", "route": "straight", "labelDy": -14 },
+    { "id": "dedup-quarantine", "from": "dedup", "to": "quarantine", "label": "failures", "classification": "with reason", "variant": "dashed" },
+    { "id": "curated-state", "from": "curated", "to": "state", "label": "watermark", "classification": "as-of date", "variant": "default" },
+    { "id": "curated-manifest", "from": "curated", "to": "manifest", "label": "run summary", "classification": "lineage", "variant": "default" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Main path (per partition)",
+      "items": [
+        "One process_date partition is read at a time, keeping memory bounded",
+        "Order is dedup before validate (ADR-018), then an idempotent partition write",
+        "Valid rows are stamped with row-level lineage"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Fail-closed branches",
+      "items": [
+        "A breaking schema change fails the partition at the gate, nothing is curated",
+        "Contract failures are quarantined with a per-row reason, the run continues",
+        "A duplicate re-delivery is collapsed latest-wins, not quarantined"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Incremental state & evidence",
+      "items": [
+        "Watermark plus a 3-day window absorbs late arrivals",
+        "Freshness exposes the as-of date CORA tells the customer",
+        "Each run writes a manifest: inputs, counts, checks, schema events"
+      ]
+    }
+  ]
+}
