@@ -84,3 +84,14 @@ preferable"*, *"make explicit trade-offs"*). Status: `Accepted` · `Proposed` (n
 ## ADR-015 - Repository hygiene for source PDFs · Accepted
 - **Decision:** the original PDFs stay in `Docs/`, which is gitignored (the data dictionary contains plaintext credentials). Versioned documentation lives in `documentation/` - a distinct name because Windows paths are case-insensitive and `docs/` would collide with the ignored `Docs/`.
 - **Consequences:** `CORA_CONTEXT.md` and `documentation/SOURCE_REQUIREMENTS.md` (built from the PDF text extraction) replace the PDFs for anyone reading the repo.
+
+## ADR-017 - Data contracts follow observed data over the dictionary · Accepted (2026-10-01)
+- **Context:** task 1.2 built Pandera contracts for all 13 tables. REQ-21 says contracts match the data dictionary, but the dictionary disagrees with the landed data in several places (consistent with profile findings F1-F6: schemas match but categorical values are Spanish, nullability is structural, and the raw landing stored every column as a string). Five concrete conflicts surfaced while validating real samples through `LocalSource`.
+- **Decision:** where the dictionary and the observed data conflict, the contract encodes the **observed** reality (the observed-structure rule), and the divergence is recorded. The five divergences from the task 1.2 plan:
+  1. `call_center_interactions.detected_sentiment` uses observed Spanish values `{Muy Positivo, Positivo, Neutral, Negativo, Muy Negativo}`, not the English in the plan.
+  2. `complaints.currency` includes **MXN** (observed `{USD, MXN, COP, ARS}`; measured 5,487 MXN rows). This refines ADR-016, which scopes "no MXN" to `products` and `transactions`; complaints carry MXN and are not relabeled.
+  3. `branches.geographic_zone` uses observed Spanish `{Urbana, Suburbana, Rural}`.
+  4. `digital_events.customer_id` is `nullable=True` (observed ~24% null, anonymous events: 60,518 / 251,967 rows in 2026-06), not non-nullable.
+  5. `service_agents.employee_code` is not unique (1,187 distinct / 1,200 rows); `agent_id` is the unique PK.
+- **Alternatives:** *encode the dictionary verbatim* - rejected, contracts would reject valid landed rows and give false quality signals; *silently diverge without a record* - rejected, the engineering-rigor axis needs the "why" to be auditable.
+- **Consequences:** contracts validate real samples after coercion (34 passed / 1 skipped); the contract vocabulary and nullability are faithful to the data; the quality layer (task 1.3) and the labeled fixture (task 1.7) exercise the violation paths. Each divergence was verified against the data, not assumed. ADR-016's "currency as recorded" principle still holds; this ADR only clarifies MXN's scope.
