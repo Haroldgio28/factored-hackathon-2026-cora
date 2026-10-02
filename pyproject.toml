@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     "boto3==1.43.106",
+    "pandas==2.2.3",
+    "pandera==0.20.4",
     "pydantic-settings==2.15.0",
     "python-dotenv==1.2.3",
 ]
