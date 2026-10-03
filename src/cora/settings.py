@@ -12,6 +12,11 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Default session TTL (absolute, in minutes) for the mock identity service (REQ-11). Named once
+# so the field default and the blank-template validator agree. REQ-11 phrases this as "idle";
+# the mock implements an absolute expiry (stricter), with sliding refresh deferred to task 2.3.
+DEFAULT_SESSION_TTL_MINUTES = 15
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -24,6 +29,14 @@ class Settings(BaseSettings):
     bedrock_model_id: str = Field("", alias="CORA_BEDROCK_MODEL_ID")
     bedrock_judge_model_id: str = Field("", alias="CORA_BEDROCK_JUDGE_MODEL_ID")
     bedrock_fallback_model_id: str = Field("", alias="CORA_BEDROCK_FALLBACK_MODEL_ID")
+
+    # Mock identity service (task 2.1, REQ-10/REQ-11). The HMAC key signs session JWTs; it is
+    # a secret, so only its NAME ships in `.env.example` (empty) and the mock IdP fails closed
+    # when it is unset. The session TTL is the absolute expiry in minutes (default 15).
+    identity_signing_key: str = Field("", alias="CORA_IDENTITY_SIGNING_KEY")
+    identity_session_ttl_minutes: int = Field(
+        DEFAULT_SESSION_TTL_MINUTES, alias="CORA_IDENTITY_SESSION_TTL_MINUTES"
+    )
 
     # Organizer datathon bucket (read-only profile configured outside the repo)
     datathon_profile: str = Field("cora-datathon", alias="CORA_DATATHON_PROFILE")
@@ -39,6 +52,12 @@ class Settings(BaseSettings):
     def _blank_is_none(cls, value: object) -> object:
         # `.env.example` ships `CORA_PRICE_*=` blank; treat that as unknown, not as an error.
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("identity_session_ttl_minutes", mode="before")
+    @classmethod
+    def _blank_ttl_is_default(cls, value: object) -> object:
+        # `.env.example` ships `CORA_IDENTITY_SESSION_TTL_MINUTES=` blank; fall back to the default.
+        return DEFAULT_SESSION_TTL_MINUTES if isinstance(value, str) and not value.strip() else value
 
     @property
     def bedrock_configured(self) -> bool:
