@@ -1,0 +1,84 @@
+# CORA policy rule table (task 2.4, design section 5, REQ-13/REQ-15/REQ-33/REQ-34).
+#
+# The deterministic layer that decides answer / confirm / escalate / abstain / refuse. The LLM
+# only PROPOSES a next step; this table DECIDES (REQ-13, principle P1). Rules are evaluated
+# top-down and the FIRST match wins, so order here IS the policy. Each rule carries a stable id
+# that appears in traces and agent explanations (REQ-39). Conditions are NOT code in this file:
+# each `when` names a predicate implemented in `engine.py`, so no instruction-like text from any
+# input is ever interpreted (security steering: all inputs are data).
+#
+# `version` is recorded with every decision. `thresholds` are PLACEHOLDER defaults for Phase 3;
+# the final tau_* values are chosen on the validation split (REQ-32) and may be injected at
+# construction time, overriding the defaults below while keeping this version pinned.
+
+version: "0.1.0"
+
+thresholds:
+  # fraud_score is on a 0-100 scale (data contracts); >= tau_fraud escalates (POL-040).
+  tau_fraud: 70.0
+  # intent confidence below tau_escalate escalates (POL-060); below tau_clarify asks one
+  # clarifying question (POL-070). tau_clarify >= tau_escalate by construction.
+  tau_escalate: 0.40
+  tau_clarify: 0.60
+
+# Explicit allow-list: each supported intent maps to the decisions the LLM is permitted to
+# propose for it (REQ-13). A proposal outside this set is REJECTED; the engine still decides
+# deterministically from the rules below. The always-safe fail-closed outcomes (abstain) and
+# the human path (escalate) are permitted for every intent; `answer` only for reads, `confirm`
+# only for the two card actions, `refuse` only for money movement.
+allow_list:
+  I1: [answer, escalate, abstain]
+  I2: [answer, escalate, abstain]
+  I3: [answer, escalate, abstain]
+  I4: [answer, escalate, abstain]
+  I5: [answer, escalate, abstain]
+  I6: [answer, escalate, abstain]
+  A1: [confirm, escalate, abstain]
+  A2: [confirm, escalate, abstain]
+  E1: [escalate, abstain]
+  E2: [escalate, abstain]
+  E3: [escalate, abstain]
+  E4: [escalate, abstain]
+  X1: [abstain, escalate]
+  X2: [refuse, abstain]
+  X3: [abstain, escalate]
+  OTHER: [abstain, escalate]
+
+# Ordered rule table (design section 5, verbatim). First match wins.
+rules:
+  - id: POL-000
+    when: session_not_valid
+    decision: reauth
+  - id: POL-010
+    when: injection_and_requested_outside_allow_list
+    decision: abstain
+    log: true
+  - id: POL-020
+    when: intent_money_movement
+    decision: refuse
+  - id: POL-030
+    when: intent_credit
+    decision: abstain_route
+    route: CREDIT_OUT_OF_SCOPE
+  - id: POL-040
+    when: fraud_signal
+    decision: escalate
+    priority: high
+  - id: POL-050
+    when: intent_escalation
+    decision: escalate
+  - id: POL-060
+    when: confidence_below_escalate
+    decision: escalate
+  - id: POL-070
+    when: confidence_below_clarify_or_ambiguous_entity
+    decision: clarify
+  - id: POL-080
+    when: action_product_owned_and_state_allows
+    decision: confirm
+  - id: POL-090
+    when: read_resource_owned
+    decision: answer
+  - id: POL-999
+    when: otherwise
+    decision: abstain

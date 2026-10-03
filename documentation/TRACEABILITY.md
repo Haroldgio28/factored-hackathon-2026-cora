@@ -14,7 +14,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 |---|---|---|---|---|---|
 | SRC-01 | Working AI-first system | 04, 49 | 5.3, 5.4 | API + demo UI | Planned |
 | SRC-02 | Understand complex interactions | 06 | 4.1 | multi-turn scenarios | Planned |
-| SRC-03 | Use data/tools securely | 10, 12 | 2.1, 2.2 | authN/authZ tests | Planned |
+| SRC-03 | Use data/tools securely | 10, 12 | 2.1, 2.2 | `tests/unit/test_identity.py` (authN) + `tests/unit/test_tools.py` (authZ, session-injected `customer_id`) | Done |
 | SRC-04 | Complete service workflows | 04 | 4.1 | state machine + scenarios | Planned |
 | SRC-05 | Involve humans when needed | 15, 16 | 4.5 | handoff packages | Planned |
 | SRC-06 | Focused problem, end-to-end | 01, 04 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
@@ -38,12 +38,12 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-24 | Conversational context | 06 | 4.1 | context tests | Planned |
 | SRC-25 | Clarify ambiguity | 07 | 4.1 | clarification scenarios | Planned |
 | SRC-26 | Grounded factual answers | 08, 28 | 4.3 | grounding tests | Planned |
-| SRC-27 | Use tools when they serve | 09 | 2.2, 4.4 | tool traces | Planned |
-| SRC-28 | Report only verified actions | 09 | 2.3, 4.4 | read-back tests | Planned |
-| SRC-29 | Define answerable requests | 04, 13 | 2.4 | `rules.yaml` | Planned |
+| SRC-27 | Use tools when they serve | 09 | 2.2, 4.4 | tool layer `tests/unit/test_tools.py` (2.2 done); agent-wired traces pending (4.4) | Partial |
+| SRC-28 | Report only verified actions | 09 | 2.3, 4.4 | `tests/unit/test_card_overlay.py` read-back + fail-closed (2.3 done); agent flow pending (4.4) | Partial |
+| SRC-29 | Define answerable requests | 04, 13 | 2.4 | `src/cora/policy/rules.yaml` + `tests/unit/test_policy.py` | Done |
 | SRC-30 | Define confirmation-required actions | 13, 14 | 4.4 | confirmation tests | Planned |
-| SRC-31 | Define abstain / transfer | 13, 15 | 2.4, 4.5 | policy tests | Planned |
-| SRC-32 | Policy enforced outside prose | 12, 13 | 2.2, 2.4 | policy engine + tests | Planned |
+| SRC-31 | Define abstain / transfer | 13, 15 | 2.4, 4.5 | `rules.yaml` POL-050/999 + `tests/unit/test_policy.py` (2.4 done); handoff execution pending (4.5) | Partial |
+| SRC-32 | Policy enforced outside prose | 12, 13 | 2.2, 2.4 | `src/cora/policy/engine.py` first-match + allow-list, `tests/unit/test_policy.py` + `test_tools.py` | Done |
 | SRC-33 | Handoff contents | 16 | 4.5 | handoff schema | Planned |
 | SRC-34 | Contracts, checks, lineage, freshness | 20-24, 27 | 1.1-1.6 | manifests + reports | Planned |
 | SRC-35 | Learned component vs baseline | 29 | 3.4, 3.5 | intent_model.md | Planned |
@@ -52,8 +52,8 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-38 | Justify representation, metrics, thresholds, splits | 31, 32 | 3.3, 3.6 | intent_model.md | Planned |
 | SRC-39 | Held-out evaluation | 42 | 6.1 | scenarios.jsonl | Planned |
 | SRC-40 | Incorrect / missing data cases | 42 | 6.1 | adversarial results | Planned |
-| SRC-41 | Expired sessions | 11, 42 | 2.1, 6.1 | adversarial results | Planned |
-| SRC-42 | Unauthorized access attempts | 12, 42 | 2.2, 6.1 | adversarial results | Planned |
+| SRC-41 | Expired sessions | 11, 42 | 2.1, 6.1 | `tests/unit/test_identity.py` expired/tampered token fail-closed (2.1 done); eval cases pending (6.1) | Partial |
+| SRC-42 | Unauthorized access attempts | 12, 42 | 2.2, 6.1 | `tests/unit/test_tools.py` FORBIDDEN + access log (2.2 done); eval cases pending (6.1) | Partial |
 | SRC-43 | Prompt injection | 35, 42 | 3.7, 6.1 | adversarial results | Planned |
 | SRC-44 | Tool failures | 40, 42 | 5.2, 6.1 | fault-injection results | Planned |
 | SRC-45 | Multilingual ambiguity | 07, 18, 42 | 3.7, 6.1 | adversarial results | Planned |
@@ -71,11 +71,11 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-57 | Organizer-approved data only | 37 | 3.1 | data provenance table | Planned |
 | SRC-58 | Label real/synthetic/team-generated | 19, 30, 37 | 3.1, 3.2 | provenance column | Planned |
 | SRC-59 | No private data/credentials in submission or LLM calls | 36, 52 | 0.2, 4.2, 7.6 | gitleaks job in `.github/workflows/ci.yml` (0.2 done); PII masking (4.2) + clean-clone audit (7.6) pending | Partial |
-| SRC-60 | Mock tools with documented contracts | 38 | 2.2 | TOOL_CONTRACTS.md | Planned |
-| SRC-61 | Trusted authentication | 10, 11 | 2.1 | IdP tests | Planned |
-| SRC-62 | Per-customer access in tool layer | 12 | 2.2 | FORBIDDEN tests | Planned |
-| SRC-63 | Credit separation / no invented eligibility | 33 | 2.4, 4.6 | credit-guard scenarios | Planned |
-| SRC-64 | No lending or money movement | 17, 34 | 2.2, 4.6 | no-money tool audit | Planned |
+| SRC-60 | Mock tools with documented contracts | 38 | 2.2 | `documentation/TOOL_CONTRACTS.md` (inputs/outputs/errors/side-effects/limitations per tool) | Done |
+| SRC-61 | Trusted authentication | 10, 11 | 2.1 | `tests/unit/test_identity.py` (OTP + HMAC JWT, TTL, jti, ID-only refusal) | Done |
+| SRC-62 | Per-customer access in tool layer | 12 | 2.2 | `tests/unit/test_tools.py` FORBIDDEN on foreign resource + read-only `customer_id` | Done |
+| SRC-63 | Credit separation / no invented eligibility | 33 | 2.4, 4.6 | `rules.yaml` POL-030 abstain_route + `test_policy.py` (2.4 done); agent guard pending (4.6) | Partial |
+| SRC-64 | No lending or money movement | 17, 34 | 2.2, 4.6 | `test_tools.py` registry test: no money-movement tool exists (2.2 done); policy refusal path pending (4.6) | Partial |
 | SRC-65 | Baseline vs system on same workload | 41 | 6.2, 6.3 | EVALUATION.md | Planned |
 | SRC-66 | Cases mix, label quality, versions, variability | 42, 44 | 6.1, 6.3 | run metadata | Planned |
 | SRC-67 | Include failures | 43, 47 | 6.9 | error analysis | Planned |
@@ -93,6 +93,6 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-79 | Schema evolution | 25 | 1.5, 1.7 | fixture tests | Planned |
 | SRC-80 | Referential integrity + orphans | 22 | 1.3 | `documentation/reports/data_profile.md` (observed 0%) | Partial |
 | SRC-81 | Regional Spanish variants | 18 | 3.1, 3.7 | per-country results | Planned |
-| SRC-82 | Multi-currency + FX | 28 | 2.2 | FX tests | Planned |
+| SRC-82 | Multi-currency + FX | 28 | 2.2 | `tests/unit/test_tools.py` `convert_currency` (exact-date rate, latest-prior-within-7-days, >7-day abstain, no relabeling) | Done |
 | SRC-83 | Date-partitioned facts | 20 | 1.1, 1.4 | pipeline | Planned |
 | SRC-84 | Synthetic, read-only, credentials not shared | 36 | 0.2, 0.3 | `.gitignore`, gitleaks + no-PDF jobs in `.github/workflows/ci.yml`, `tests/unit/test_settings.py` | Done |

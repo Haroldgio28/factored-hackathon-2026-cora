@@ -9,7 +9,9 @@ dependencies = [
     "pandas==2.2.3",
     "pandera==0.20.4",
     "pydantic-settings==2.15.0",
+    "pyjwt==2.10.1",
     "python-dotenv==1.2.3",
+    "pyyaml==6.0.3",
 ]
 
 [dependency-groups]

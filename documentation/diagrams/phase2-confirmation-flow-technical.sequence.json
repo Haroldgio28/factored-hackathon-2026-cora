@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "CORA Phase 2 - Confirmed card freeze (code-level flow)",
+    "output": "documentation/diagrams/phase2-confirmation-flow-technical.html",
+    "viewBox": [1072, 591],
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "views": [
+      { "id": "authz", "label": "AuthZ (task 2.1/2.2)", "focus": ["caller", "session", "layer", "datasource"], "note": "customer_id comes from the verified session; a foreign product_id fails closed as FORBIDDEN." },
+      { "id": "policy", "label": "Policy (task 2.4)", "focus": ["caller", "engine"], "note": "First-match rule table returns a decision plus its POL-* rule id for the trace." },
+      { "id": "confirm-write", "label": "Confirm + verified write (2.3)", "focus": ["layer", "confirmations", "overlay"], "note": "A valid confirmation_id gates the idempotent overlay write; read-back enforces REQ-09." }
+    ]
+  },
+  "participants": [
+    { "id": "caller", "type": "external", "label": "Orchestrator", "sublabel": "proposes next step" },
+    { "id": "engine", "type": "backend", "label": "PolicyEngine", "sublabel": "rules.yaml first-match" },
+    { "id": "layer", "type": "backend", "label": "ToolLayer", "sublabel": "bound to Session" },
+    { "id": "session", "type": "security", "label": "Session", "sublabel": "verified customer_id" },
+    { "id": "confirmations", "type": "security", "label": "Confirmations", "sublabel": "confirmation_id + TTL" },
+    { "id": "datasource", "type": "database", "label": "DataSource", "sublabel": "read-only products" },
+    { "id": "overlay", "type": "database", "label": "CardOverlay", "sublabel": "data/_state (writable)" }
+  ],
+  "segments": [
+    { "from": 152, "to": 236, "label": "Decide (POL-080)" },
+    { "from": 248, "to": 388, "label": "Authorize + confirm" },
+    { "from": 400, "to": 508, "label": "Write + read-back (REQ-09)" }
+  ],
+  "messages": [
+    { "id": "evaluate", "from": "caller", "to": "engine", "y": 180, "label": "evaluate(PolicyInput: intent=A1, confidence)", "variant": "emphasis" },
+    { "id": "decision", "from": "engine", "to": "caller", "y": 212, "label": "PolicyDecision(decision=confirm, rule_id=POL-080)", "variant": "return", "note": "First match wins; an LLM proposal outside the allow-list is rejected (REQ-13)." },
+    { "id": "freeze-call", "from": "caller", "to": "layer", "y": 262, "label": "freeze_card(CardFreezeInput: product_id, confirmation_id)", "variant": "emphasis", "note": "No customer_id in the input - it is injected from the session (REQ-12)." },
+    { "id": "load-owned", "from": "layer", "to": "datasource", "y": 290, "label": "_load_owned_product(product_id) with session.customer_id", "variant": "security" },
+    { "id": "owned", "from": "datasource", "to": "layer", "y": 318, "label": "row | FORBIDDEN (foreign -> logged, fail closed)", "variant": "return", "note": "A product_id not owned by the session customer returns FORBIDDEN and is written to the access log." },
+    { "id": "get-conf", "from": "layer", "to": "confirmations", "y": 346, "label": "get(confirmation_id)", "variant": "security" },
+    { "id": "conf-valid", "from": "confirmations", "to": "layer", "y": 374, "label": "is_valid_for(customer, FREEZE, product, now)", "variant": "return", "note": "Absent / mismatched / expired => Status.INVALID, no write (REQ-14)." },
+    { "id": "put", "from": "layer", "to": "overlay", "y": 412, "label": "put(CardFreezeState frozen=True)  [idempotent]", "variant": "emphasis" },
+    { "id": "get-back", "from": "layer", "to": "overlay", "y": 440, "label": "get(product_id)  // read-back", "variant": "security" },
+    { "id": "readback", "from": "overlay", "to": "layer", "y": 468, "label": "CardFreezeState | None (overlay I/O wrapped)", "variant": "return", "note": "A raising overlay or a failing post-condition both yield Status.UNAVAILABLE + 'offer a human'." },
+    { "id": "ok", "from": "layer", "to": "caller", "y": 496, "label": "Result(OK, data=applied, source_refs=[card_overlay], as_of)", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "engine", "from": 180, "to": 216, "type": "backend" },
+    { "participant": "layer", "from": 262, "to": 498, "type": "backend" },
+    { "participant": "datasource", "from": 286, "to": 322, "type": "database" },
+    { "participant": "confirmations", "from": 342, "to": 378, "type": "security" },
+    { "participant": "overlay", "from": 408, "to": 472, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Authorization (REQ-12)",
+      "items": [
+        "customer_id injected from Session, never a tool input",
+        "Foreign resource -> FORBIDDEN + logged"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Policy + confirmation (REQ-13/14)",
+      "items": [
+        "rules.yaml first-match; POL-080 -> confirm",
+        "Confirmation bound to customer+action+product"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Verified write (REQ-09)",
+      "items": [
+        "Idempotent write; read-back confirms before OK",
+        "Fail or error -> UNAVAILABLE, not completed"
+      ]
+    }
+  ]
+}
