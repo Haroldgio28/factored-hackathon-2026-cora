@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "CORA - Freezing a card, step by step",
+    "output": "documentation/diagrams/phase2-confirmation-flow-business.html",
+    "viewBox": [1040, 590],
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "views": [
+      { "id": "who-are-you", "label": "Who are you", "focus": ["customer", "cora", "identity"], "note": "The customer must prove their identity before anything else happens." },
+      { "id": "what-is-allowed", "label": "What is allowed", "focus": ["cora", "policy"], "note": "A fixed rulebook, not the AI, decides this needs an explicit confirmation." },
+      { "id": "do-and-verify", "label": "Do and double-check", "focus": ["cora", "bank", "customer"], "note": "CORA changes the card only after a yes, then re-checks before telling the customer." }
+    ]
+  },
+  "participants": [
+    { "id": "customer", "type": "external", "label": "Customer", "sublabel": "logged in" },
+    { "id": "cora", "type": "frontend", "label": "CORA", "sublabel": "assistant" },
+    { "id": "identity", "type": "security", "label": "Identity", "sublabel": "verified login" },
+    { "id": "policy", "type": "backend", "label": "Rulebook", "sublabel": "what is allowed" },
+    { "id": "bank", "type": "database", "label": "Card record", "sublabel": "bank data" }
+  ],
+  "segments": [
+    { "from": 152, "to": 250, "label": "Prove identity" },
+    { "from": 262, "to": 376, "label": "Confirm the action" },
+    { "from": 388, "to": 502, "label": "Apply and verify" }
+  ],
+  "messages": [
+    { "id": "ask", "from": "customer", "to": "cora", "y": 176, "label": "\"Please freeze my card\"", "variant": "emphasis" },
+    { "id": "check-id", "from": "cora", "to": "identity", "y": 204, "label": "Is this a verified customer?", "variant": "security" },
+    { "id": "id-ok", "from": "identity", "to": "cora", "y": 232, "label": "Yes - and only their own cards", "variant": "return", "note": "If the login is missing or expired, CORA stops here and shares nothing." },
+    { "id": "ask-policy", "from": "cora", "to": "policy", "y": 274, "label": "What should happen for this request?", "variant": "default" },
+    { "id": "policy-says", "from": "policy", "to": "cora", "y": 302, "label": "Allowed, but ask the customer first", "variant": "return", "note": "The rulebook, not the AI, makes this call - so it is predictable and auditable." },
+    { "id": "restate", "from": "cora", "to": "customer", "y": 330, "label": "\"Freeze card ending 1234 - confirm?\"", "variant": "emphasis" },
+    { "id": "yes", "from": "customer", "to": "cora", "y": 358, "label": "\"Yes\"", "variant": "emphasis" },
+    { "id": "apply", "from": "cora", "to": "bank", "y": 400, "label": "Freeze the card", "variant": "emphasis" },
+    { "id": "readback", "from": "cora", "to": "bank", "y": 428, "label": "Re-read: is it really frozen now?", "variant": "security" },
+    { "id": "confirmed", "from": "bank", "to": "cora", "y": 456, "label": "Confirmed frozen", "variant": "return", "note": "If the re-check fails, CORA says it was NOT done and offers a human agent." },
+    { "id": "tell", "from": "cora", "to": "customer", "y": 484, "label": "\"Done - your card is frozen\"", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "cora", "from": 176, "to": 486, "type": "frontend" },
+    { "participant": "identity", "from": 200, "to": 236, "type": "security" },
+    { "participant": "policy", "from": 270, "to": 306, "type": "backend" },
+    { "participant": "bank", "from": 396, "to": 460, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Identity comes first",
+      "items": [
+        "Nothing is read or changed until the customer is verified",
+        "A customer can only ever touch their own cards"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "The rulebook decides, not the AI",
+      "items": [
+        "Fixed rules choose: answer, confirm, escalate or refuse",
+        "A sensitive action always needs an explicit yes"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Verify before telling",
+      "items": [
+        "The card changes only after the customer confirms",
+        "CORA re-reads it; if anything is off, it offers a human"
+      ]
+    }
+  ]
+}
