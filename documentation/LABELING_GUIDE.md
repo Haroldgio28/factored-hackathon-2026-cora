@@ -1,7 +1,8 @@
 # Intent labeling guide (CORA gold set)
 
 **Task:** 3.1 · **Requirements:** REQ-30 (valid labels), REQ-37 (provenance) · **Spec:** `cora`
-**Gold set:** `data/nlu/gold.tsv` (Spanish) — authored by `data/nlu/build_gold.py`.
+**Gold set:** `data/nlu/gold.tsv` (Spanish, `build_gold.py`) + `data/nlu/gold_pt.tsv`
+(Portuguese, task 3.2, `build_gold_pt.py`).
 
 This guide is the authoring contract for CORA's intent gold set. It defines the 16 classes, the
 anchor examples per Spanish variant, the provenance scheme, and the double-labeling protocol used
@@ -124,6 +125,35 @@ inflating the set.
 
 ## Language coverage & limitations
 
-<!-- Portuguese coverage and its provenance limitation are documented here at task 3.2. -->
-Spanish only at task 3.1. Portuguese (task 3.2) is team-generated/translated and labeled with its
-provenance; per-language metric sample sizes are reported in `intent_model.md` at task 3.6.
+**Spanish (`data/nlu/gold.tsv`)** is the primary set: 240 team-authored rows across MX/CO/AR, 15
+per class. **Portuguese (`data/nlu/gold_pt.tsv`, task 3.2)** mirrors it 1:1 — 240 rows, all
+`variant=BR` — authored by `data/nlu/build_gold_pt.py`:
+
+- **192 rows (80%)** are an **ES→PT translation** of the Spanish set, `provenance=translated`. Each
+  carries `reviewer_note = "ES->PT translation of <source scenario_id>"`.
+- **48 rows (20%)** are **native-style BR rewrites** (`provenance=team-generated`) — idiomatic
+  phrasings a Brazilian would actually type (e.g. "Faz um Pix de 2000 reais pro meu irmão" for the
+  money-movement class), not a literal rendering. Each carries
+  `reviewer_note = "native-style BR rewrite of <source scenario_id>"`.
+
+Each PT `scenario_id` is `S-<intent>-BR-<source-variant>-<idx>`, a BR derivative of its Spanish
+source `S-<intent>-<source-variant>-<idx>`, so the es↔pt pairing is a checkable column relation.
+`cora.nlu.goldset.check_pairing(es, pt)` fails closed if any Spanish scenario has no Portuguese
+counterpart. Double-labeling mirrors the Spanish source (same 20% of rows, same `label_b`), so
+Cohen's κ is comparable across languages — **measured κ = 0.733 on both sets**.
+
+### Documented limitation (REQ-18 / REQ-19)
+
+The dataset is **Spanish-only** (EDA F7); there is no native Portuguese source data. The Portuguese
+gold set is therefore **synthetic**: machine/assisted ES→PT translation reviewed by the team, plus a
+20% native-rewrite slice to counter translationese. Two honesty caveats carry forward to the model
+report:
+
+1. **Translationese bias.** 80% of PT rows follow Spanish sentence structure. The multilingual
+   embedding (task 3.5) is expected to transfer well, but a Portuguese-native speaker would phrase
+   some requests differently; the 20% native slice only partially offsets this.
+2. **Per-language metrics must be read with their sample size.** PT results are reported **separately
+   from ES** in `documentation/reports/intent_model.md` (task 3.6) with the per-language, per-class
+   sample sizes, and are labeled *offline measurement on a synthetic translated set* (REQ-47) — not
+   as evidence of production Portuguese performance. Closing this gap needs native PT utterances,
+   recorded as future work.

@@ -11,10 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from cora.nlu.goldset import COLUMNS, GoldSetError, cohen_kappa, load
+from cora.nlu.goldset import COLUMNS, GoldSetError, check_pairing, cohen_kappa, load
 from cora.nlu.labels import Intent
 
-GOLD = Path(__file__).resolve().parents[2] / "data" / "nlu" / "gold.tsv"
+_DATA = Path(__file__).resolve().parents[2] / "data" / "nlu"
+GOLD = _DATA / "gold.tsv"
+GOLD_PT = _DATA / "gold_pt.tsv"
 
 # A minimal valid two-row TSV used as the base for the malformed-file cases; each bad case mutates
 # exactly one field so the test pins which rule rejected it.
@@ -49,6 +51,50 @@ def test_real_gold_set_double_labeling_and_kappa() -> None:
     # A real, non-degenerate agreement figure: some disagreements exist, so it is neither 1.0 nor
     # negative. 0.4 is the floor for "moderate" agreement on the Landis-Koch scale.
     assert 0.4 <= kappa < 1.0, f"kappa should be substantial-but-imperfect, got {kappa}"
+
+
+# -- the real committed Portuguese gold set (task 3.2) --------------------------------------
+
+
+def test_real_pt_gold_set_loads_and_is_balanced() -> None:
+    df = load(GOLD_PT)
+    counts = df["intent"].value_counts()
+    assert set(counts.index) == {i.value for i in Intent}
+    assert set(df["language"]) == {"pt"}
+    assert set(df["variant"]) == {"BR"}
+    # Only translated/team-generated provenance (no dataset-seed ever); both are present.
+    assert set(df["provenance"]) == {"translated", "team-generated"}
+
+
+def test_pt_native_rewrites_are_about_twenty_percent() -> None:
+    df = load(GOLD_PT)
+    share = (df["provenance"] == "team-generated").mean()
+    assert 0.15 <= share <= 0.25, f"native rewrites should be ~20%, got {share:.2%}"
+
+
+def test_every_pt_row_records_its_provenance_in_the_note() -> None:
+    # REQ-19/REQ-37: a translated or rewritten row must carry a non-blank reviewer_note.
+    df = load(GOLD_PT)
+    assert (df["reviewer_note"].str.strip() != "").all()
+    translated = df[df["provenance"] == "translated"]
+    assert translated["reviewer_note"].str.contains("translation").all()
+
+
+def test_pt_pairs_every_spanish_row() -> None:
+    es, pt = load(GOLD), load(GOLD_PT)
+    check_pairing(es, pt)  # raises GoldSetError if any es scenario lacks a pt counterpart
+
+
+def test_pairing_fails_when_a_pt_row_is_missing() -> None:
+    es, pt = load(GOLD), load(GOLD_PT)
+    with pytest.raises(GoldSetError, match="no pt translation"):
+        check_pairing(es, pt.iloc[1:])  # drop one pt row -> an es scenario is now uncovered
+
+
+def test_pairing_rejects_es_frame_as_pt() -> None:
+    es = load(GOLD)
+    with pytest.raises(GoldSetError, match="no BR rows"):
+        check_pairing(es, es)
 
 
 # -- fail-closed contract -------------------------------------------------------------------

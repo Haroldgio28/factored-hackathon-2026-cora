@@ -1,0 +1,241 @@
+id	scenario_id	utterance	intent	language	variant	provenance	month	double_labeled	label_b	reviewer_note
+S-I1-BR-MX-0-1	S-I1-BR-MX-0	Qual é o saldo da minha conta?	I1	pt	BR	team-generated	2026-10-W1	true	I4	native-style BR rewrite of S-I1-MX-0
+S-I1-BR-MX-1-1	S-I1-BR-MX-1	Ei, você pode checar meu saldo, por favor?	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-MX-1
+S-I1-BR-MX-2-1	S-I1-BR-MX-2	Quero saber quanto ainda tenho disponível no cartão	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-MX-2
+S-I1-BR-MX-3-1	S-I1-BR-MX-3	Qual é o meu saldo atual?	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-MX-3
+S-I1-BR-MX-4-1	S-I1-BR-MX-4	Preciso ver quanto tenho agora na minha conta de débito	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-MX-4
+S-I1-BR-CO-0-1	S-I1-BR-CO-0	Quanto tem na minha conta?	I1	pt	BR	team-generated	2026-10-W1	true	I1	native-style BR rewrite of S-I1-CO-0
+S-I1-BR-CO-1-1	S-I1-BR-CO-1	Por favor, me informe o meu saldo	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-CO-1
+S-I1-BR-CO-2-1	S-I1-BR-CO-2	Gostaria de saber o limite disponível do meu cartão	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-CO-2
+S-I1-BR-CO-3-1	S-I1-BR-CO-3	Você pode me dizer quanto dinheiro tenho disponível?	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-CO-3
+S-I1-BR-CO-4-1	S-I1-BR-CO-4	Preciso consultar o saldo da minha conta poupança	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-CO-4
+S-I1-BR-AR-0-1	S-I1-BR-AR-0	Quanto eu tenho de saldo?	I1	pt	BR	team-generated	2026-10-W1	true	I4	native-style BR rewrite of S-I1-AR-0
+S-I1-BR-AR-1-1	S-I1-BR-AR-1	E aí, me diz o meu saldo?	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-AR-1
+S-I1-BR-AR-2-1	S-I1-BR-AR-2	Quero saber o limite disponível do cartão	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-AR-2
+S-I1-BR-AR-3-1	S-I1-BR-AR-3	Qual é o meu saldo hoje?	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-AR-3
+S-I1-BR-AR-4-1	S-I1-BR-AR-4	Preciso ver quanto me resta na conta poupança	I1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I1-AR-4
+S-I2-BR-MX-0-1	S-I2-BR-MX-0	Dá pra ver o meu extrato?	I2	pt	BR	team-generated	2026-10-W1	true	I2	native-style BR rewrite of S-I2-MX-0
+S-I2-BR-MX-1-1	S-I2-BR-MX-1	Quero ver as minhas compras desta semana	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-MX-1
+S-I2-BR-MX-2-1	S-I2-BR-MX-2	Quanto eu gastei no fim de semana passado?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-MX-2
+S-I2-BR-MX-3-1	S-I2-BR-MX-3	Me mostre as transações do meu cartão deste mês	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-MX-3
+S-I2-BR-MX-4-1	S-I2-BR-MX-4	Quando foi a minha última compra?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-MX-4
+S-I2-BR-CO-0-1	S-I2-BR-CO-0	Me mostra o extrato da conta?	I2	pt	BR	team-generated	2026-10-W1	true	I2	native-style BR rewrite of S-I2-CO-0
+S-I2-BR-CO-1-1	S-I2-BR-CO-1	Quero ver as minhas compras recentes	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-CO-1
+S-I2-BR-CO-2-1	S-I2-BR-CO-2	Quanto eu gastei na semana passada?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-CO-2
+S-I2-BR-CO-3-1	S-I2-BR-CO-3	Preciso do histórico de transações do mês	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-CO-3
+S-I2-BR-CO-4-1	S-I2-BR-CO-4	Qual foi a minha última movimentação?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-CO-4
+S-I2-BR-AR-0-1	S-I2-BR-AR-0	Me manda o extrato do cartão?	I2	pt	BR	team-generated	2026-10-W1	true	I2	native-style BR rewrite of S-I2-AR-0
+S-I2-BR-AR-1-1	S-I2-BR-AR-1	Quero ver as minhas compras dos últimos dias	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-AR-1
+S-I2-BR-AR-2-1	S-I2-BR-AR-2	Quanto eu gastei este mês?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-AR-2
+S-I2-BR-AR-3-1	S-I2-BR-AR-3	Me passa o detalhe das movimentações da conta	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-AR-3
+S-I2-BR-AR-4-1	S-I2-BR-AR-4	Quando foi a minha última compra com o cartão?	I2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I2-AR-4
+S-I3-BR-MX-0-1	S-I3-BR-MX-0	Por que esse lançamento está pendente?	I3	pt	BR	team-generated	2026-10-W1	true	I2	native-style BR rewrite of S-I3-MX-0
+S-I3-BR-MX-1-1	S-I3-BR-MX-1	O que aconteceu com o pagamento que fiz ontem, não foi lançado?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-MX-1
+S-I3-BR-MX-2-1	S-I3-BR-MX-2	Ei, por que recusaram esta compra?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-MX-2
+S-I3-BR-MX-3-1	S-I3-BR-MX-3	Esta transação já foi processada ou ainda está em andamento?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-MX-3
+S-I3-BR-MX-4-1	S-I3-BR-MX-4	Por que aparece uma cobrança duplicada?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-MX-4
+S-I3-BR-CO-0-1	S-I3-BR-CO-0	Esse lançamento tá pendente por quê?	I3	pt	BR	team-generated	2026-10-W1	true	I3	native-style BR rewrite of S-I3-CO-0
+S-I3-BR-CO-1-1	S-I3-BR-CO-1	O que aconteceu com a transferência de ontem que não aparece?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-CO-1
+S-I3-BR-CO-2-1	S-I3-BR-CO-2	Por que recusaram esta compra?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-CO-2
+S-I3-BR-CO-3-1	S-I3-BR-CO-3	Este pagamento já foi concluído ou ainda está em andamento?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-CO-3
+S-I3-BR-CO-4-1	S-I3-BR-CO-4	Por que me cobraram duas vezes a mesma coisa?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-CO-4
+S-I3-BR-AR-0-1	S-I3-BR-AR-0	Por que essa cobrança ficou pendente?	I3	pt	BR	team-generated	2026-10-W1	true	I2	native-style BR rewrite of S-I3-AR-0
+S-I3-BR-AR-1-1	S-I3-BR-AR-1	O que aconteceu com o pagamento de ontem que não aparece?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-AR-1
+S-I3-BR-AR-2-1	S-I3-BR-AR-2	Por que recusaram esta compra com o cartão?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-AR-2
+S-I3-BR-AR-3-1	S-I3-BR-AR-3	Esta operação já foi creditada ou ainda está em andamento?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-AR-3
+S-I3-BR-AR-4-1	S-I3-BR-AR-4	Por que aparece a mesma cobrança duas vezes?	I3	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I3-AR-4
+S-I4-BR-MX-0-1	S-I4-BR-MX-0	Qual é o limite do meu cartão de crédito?	I4	pt	BR	team-generated	2026-10-W1	true	I4	native-style BR rewrite of S-I4-MX-0
+S-I4-BR-MX-1-1	S-I4-BR-MX-1	Meu cartão está ativo ou bloqueado?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-MX-1
+S-I4-BR-MX-2-1	S-I4-BR-MX-2	Quantos dias eu estou em atraso no pagamento?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-MX-2
+S-I4-BR-MX-3-1	S-I4-BR-MX-3	Qual é o estado atual do meu cartão?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-MX-3
+S-I4-BR-MX-4-1	S-I4-BR-MX-4	Quando vence o meu cartão?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-MX-4
+S-I4-BR-CO-0-1	S-I4-BR-CO-0	Qual é o limite do meu cartão?	I4	pt	BR	team-generated	2026-10-W1	true	I4	native-style BR rewrite of S-I4-CO-0
+S-I4-BR-CO-1-1	S-I4-BR-CO-1	Meu cartão está ativo ou está bloqueado?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-CO-1
+S-I4-BR-CO-2-1	S-I4-BR-CO-2	Quantos dias de atraso eu tenho?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-CO-2
+S-I4-BR-CO-3-1	S-I4-BR-CO-3	Em que situação está o meu cartão agora?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-CO-3
+S-I4-BR-CO-4-1	S-I4-BR-CO-4	Quando vence o meu cartão?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-CO-4
+S-I4-BR-AR-0-1	S-I4-BR-AR-0	Qual o limite do meu cartão hoje?	I4	pt	BR	team-generated	2026-10-W1	true	I4	native-style BR rewrite of S-I4-AR-0
+S-I4-BR-AR-1-1	S-I4-BR-AR-1	Meu cartão está ativo ou bloqueado?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-AR-1
+S-I4-BR-AR-2-1	S-I4-BR-AR-2	Quantos dias de atraso eu tenho no pagamento?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-AR-2
+S-I4-BR-AR-3-1	S-I4-BR-AR-3	Qual é a situação do meu cartão neste momento?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-AR-3
+S-I4-BR-AR-4-1	S-I4-BR-AR-4	Quando vence o meu cartão?	I4	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I4-AR-4
+S-I5-BR-MX-0-1	S-I5-BR-MX-0	Qual é a cotação do dólar hoje?	I5	pt	BR	team-generated	2026-10-W1	true	I1	native-style BR rewrite of S-I5-MX-0
+S-I5-BR-MX-1-1	S-I5-BR-MX-1	Quantos reais são 100 dólares?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-MX-1
+S-I5-BR-MX-2-1	S-I5-BR-MX-2	Quero converter 500 reais em dólares	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-MX-2
+S-I5-BR-MX-3-1	S-I5-BR-MX-3	Qual é a taxa de câmbio de hoje para o euro?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-MX-3
+S-I5-BR-MX-4-1	S-I5-BR-MX-4	Quanto eu recebo por 300 dólares em reais?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-MX-4
+S-I5-BR-CO-0-1	S-I5-BR-CO-0	Quanto tá o dólar agora?	I5	pt	BR	team-generated	2026-10-W1	true	I5	native-style BR rewrite of S-I5-CO-0
+S-I5-BR-CO-1-1	S-I5-BR-CO-1	Quantos reais são 50 dólares?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-CO-1
+S-I5-BR-CO-2-1	S-I5-BR-CO-2	Quero converter 200 reais em dólares	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-CO-2
+S-I5-BR-CO-3-1	S-I5-BR-CO-3	Qual é a taxa de câmbio do euro hoje?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-CO-3
+S-I5-BR-CO-4-1	S-I5-BR-CO-4	Quanto eu recebo por 100 dólares em reais?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-CO-4
+S-I5-BR-AR-0-1	S-I5-BR-AR-0	Quanto tá o dólar hoje?	I5	pt	BR	team-generated	2026-10-W1	true	I1	native-style BR rewrite of S-I5-AR-0
+S-I5-BR-AR-1-1	S-I5-BR-AR-1	Quantos reais são 100 dólares?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-AR-1
+S-I5-BR-AR-2-1	S-I5-BR-AR-2	Quero converter 10.000 reais em dólares	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-AR-2
+S-I5-BR-AR-3-1	S-I5-BR-AR-3	Qual é a cotação do euro de hoje?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-AR-3
+S-I5-BR-AR-4-1	S-I5-BR-AR-4	Quanto eu recebo por 200 dólares em reais?	I5	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I5-AR-4
+S-I6-BR-MX-0-1	S-I6-BR-MX-0	Quais produtos eu tenho no banco?	I6	pt	BR	team-generated	2026-10-W1	true	I6	native-style BR rewrite of S-I6-MX-0
+S-I6-BR-MX-1-1	S-I6-BR-MX-1	Quais são as minhas contas e cartões?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-MX-1
+S-I6-BR-MX-2-1	S-I6-BR-MX-2	Quero ver todos os meus produtos	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-MX-2
+S-I6-BR-MX-3-1	S-I6-BR-MX-3	Quais cartões estão associados à minha conta?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-MX-3
+S-I6-BR-MX-4-1	S-I6-BR-MX-4	Me dê a lista dos meus produtos do banco	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-MX-4
+S-I6-BR-CO-0-1	S-I6-BR-CO-0	Quais são os meus produtos no banco?	I6	pt	BR	team-generated	2026-10-W1	true	I6	native-style BR rewrite of S-I6-CO-0
+S-I6-BR-CO-1-1	S-I6-BR-CO-1	Quais são as minhas contas e cartões ativos?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-CO-1
+S-I6-BR-CO-2-1	S-I6-BR-CO-2	Quero ver a lista dos meus produtos	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-CO-2
+S-I6-BR-CO-3-1	S-I6-BR-CO-3	Quais cartões eu tenho associados?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-CO-3
+S-I6-BR-CO-4-1	S-I6-BR-CO-4	Me dê a lista de todos os meus produtos	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-CO-4
+S-I6-BR-AR-0-1	S-I6-BR-AR-0	Quais produtos eu tenho no banco mesmo?	I6	pt	BR	team-generated	2026-10-W1	true	I6	native-style BR rewrite of S-I6-AR-0
+S-I6-BR-AR-1-1	S-I6-BR-AR-1	Quais são as minhas contas e cartões?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-AR-1
+S-I6-BR-AR-2-1	S-I6-BR-AR-2	Quero ver todos os produtos que eu tenho	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-AR-2
+S-I6-BR-AR-3-1	S-I6-BR-AR-3	Quais cartões estão associados à conta?	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-AR-3
+S-I6-BR-AR-4-1	S-I6-BR-AR-4	Me passa a lista dos meus produtos	I6	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-I6-AR-4
+S-A1-BR-MX-0-1	S-A1-BR-MX-0	Preciso bloquear o meu cartão agora	A1	pt	BR	team-generated	2026-10-W1	true	A2	native-style BR rewrite of S-A1-MX-0
+S-A1-BR-MX-1-1	S-A1-BR-MX-1	Por favor, congele o meu cartão de crédito	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-MX-1
+S-A1-BR-MX-2-1	S-A1-BR-MX-2	Preciso desativar o meu cartão temporariamente	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-MX-2
+S-A1-BR-MX-3-1	S-A1-BR-MX-3	Bloqueie o meu cartão, acho que o perdi	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-MX-3
+S-A1-BR-MX-4-1	S-A1-BR-MX-4	Suspenda o meu cartão enquanto eu o procuro	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-MX-4
+S-A1-BR-CO-0-1	S-A1-BR-CO-0	Quero bloquear o cartão já	A1	pt	BR	team-generated	2026-10-W1	true	A1	native-style BR rewrite of S-A1-CO-0
+S-A1-BR-CO-1-1	S-A1-BR-CO-1	Por favor, congele o meu cartão de crédito	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-CO-1
+S-A1-BR-CO-2-1	S-A1-BR-CO-2	Preciso inativar o meu cartão por um momento	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-CO-2
+S-A1-BR-CO-3-1	S-A1-BR-CO-3	Bloqueie o meu cartão, acho que o perdi	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-CO-3
+S-A1-BR-CO-4-1	S-A1-BR-CO-4	Suspenda o meu cartão enquanto eu o procuro	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-CO-4
+S-A1-BR-AR-0-1	S-A1-BR-AR-0	Bloqueia o meu cartão agora, por favor	A1	pt	BR	team-generated	2026-10-W1	true	A2	native-style BR rewrite of S-A1-AR-0
+S-A1-BR-AR-1-1	S-A1-BR-AR-1	Por favor, congele o meu cartão de crédito	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-AR-1
+S-A1-BR-AR-2-1	S-A1-BR-AR-2	Preciso desativar o cartão por um tempo	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-AR-2
+S-A1-BR-AR-3-1	S-A1-BR-AR-3	Bloqueie o meu cartão, acho que o perdi	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-AR-3
+S-A1-BR-AR-4-1	S-A1-BR-AR-4	Suspenda o cartão enquanto eu o encontro	A1	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A1-AR-4
+S-A2-BR-MX-0-1	S-A2-BR-MX-0	Quero desbloquear o meu cartão	A2	pt	BR	team-generated	2026-10-W1	true	A2	native-style BR rewrite of S-A2-MX-0
+S-A2-BR-MX-1-1	S-A2-BR-MX-1	Meu cartão apareceu, ative-o de novo, por favor	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-MX-1
+S-A2-BR-MX-2-1	S-A2-BR-MX-2	Reative o meu cartão de crédito	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-MX-2
+S-A2-BR-MX-3-1	S-A2-BR-MX-3	Descongele o meu cartão, quero usá-lo de novo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-MX-3
+S-A2-BR-MX-4-1	S-A2-BR-MX-4	Habilite o meu cartão de novo, por favor	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-MX-4
+S-A2-BR-CO-0-1	S-A2-BR-CO-0	Preciso desbloquear o cartão	A2	pt	BR	team-generated	2026-10-W1	true	A2	native-style BR rewrite of S-A2-CO-0
+S-A2-BR-CO-1-1	S-A2-BR-CO-1	O cartão apareceu, ative-o de novo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-CO-1
+S-A2-BR-CO-2-1	S-A2-BR-CO-2	Reative o meu cartão de crédito, por favor	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-CO-2
+S-A2-BR-CO-3-1	S-A2-BR-CO-3	Descongele o meu cartão, preciso usá-lo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-CO-3
+S-A2-BR-CO-4-1	S-A2-BR-CO-4	Habilite o meu cartão de novo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-CO-4
+S-A2-BR-AR-0-1	S-A2-BR-AR-0	Desbloqueia o meu cartão	A2	pt	BR	team-generated	2026-10-W1	true	A2	native-style BR rewrite of S-A2-AR-0
+S-A2-BR-AR-1-1	S-A2-BR-AR-1	O cartão apareceu, ative-o de novo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-AR-1
+S-A2-BR-AR-2-1	S-A2-BR-AR-2	Reative o meu cartão de crédito	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-AR-2
+S-A2-BR-AR-3-1	S-A2-BR-AR-3	Descongele o cartão, quero voltar a usá-lo	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-AR-3
+S-A2-BR-AR-4-1	S-A2-BR-AR-4	Habilite o meu cartão de novo, por favor	A2	pt	BR	translated	2026-10-W1	false		ES->PT translation of S-A2-AR-4
+S-E1-BR-MX-0-1	S-E1-BR-MX-0	Tem uma compra no meu cartão que eu não reconheço	E1	pt	BR	team-generated	2026-10-W2	true	E3	native-style BR rewrite of S-E1-MX-0
+S-E1-BR-MX-1-1	S-E1-BR-MX-1	Não reconheço esta compra, quero contestá-la	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-MX-1
+S-E1-BR-MX-2-1	S-E1-BR-MX-2	Me cobraram algo que eu não comprei, como eu reclamo?	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-MX-2
+S-E1-BR-MX-3-1	S-E1-BR-MX-3	Quero reportar uma movimentação que eu não reconheço	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-MX-3
+S-E1-BR-MX-4-1	S-E1-BR-MX-4	Aparece uma compra que não é minha, quero reclamar	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-MX-4
+S-E1-BR-CO-0-1	S-E1-BR-CO-0	Tem uma cobrança aqui que não fui eu	E1	pt	BR	team-generated	2026-10-W2	true	E1	native-style BR rewrite of S-E1-CO-0
+S-E1-BR-CO-1-1	S-E1-BR-CO-1	Não reconheço esta compra, quero reclamá-la	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-CO-1
+S-E1-BR-CO-2-1	S-E1-BR-CO-2	Me cobraram algo que eu não comprei, quero contestar	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-CO-2
+S-E1-BR-CO-3-1	S-E1-BR-CO-3	Quero reportar uma movimentação desconhecida na conta	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-CO-3
+S-E1-BR-CO-4-1	S-E1-BR-CO-4	Figura uma compra que eu não fiz, quero reclamá-la	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-CO-4
+S-E1-BR-AR-0-1	S-E1-BR-AR-0	Tem um lançamento no cartão que não fui eu	E1	pt	BR	team-generated	2026-10-W2	true	E3	native-style BR rewrite of S-E1-AR-0
+S-E1-BR-AR-1-1	S-E1-BR-AR-1	Não reconheço esta compra, quero desconhecê-la	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-AR-1
+S-E1-BR-AR-2-1	S-E1-BR-AR-2	Me cobraram algo que eu não comprei, como eu reclamo?	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-AR-2
+S-E1-BR-AR-3-1	S-E1-BR-AR-3	Quero reportar uma movimentação que eu não reconheço	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-AR-3
+S-E1-BR-AR-4-1	S-E1-BR-AR-4	Aparece um consumo que não é meu, quero reclamá-lo	E1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E1-AR-4
+S-E2-BR-MX-0-1	S-E2-BR-MX-0	Quero abrir uma reclamação sobre o atendimento	E2	pt	BR	team-generated	2026-10-W2	true	E2	native-style BR rewrite of S-E2-MX-0
+S-E2-BR-MX-1-1	S-E2-BR-MX-1	Estou muito irritado, faz dias que espero uma resposta	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-MX-1
+S-E2-BR-MX-2-1	S-E2-BR-MX-2	Desejo apresentar uma reclamação formal	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-MX-2
+S-E2-BR-MX-3-1	S-E2-BR-MX-3	O atendimento na agência foi péssimo, quero reclamar	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-MX-3
+S-E2-BR-MX-4-1	S-E2-BR-MX-4	Quero deixar uma reclamação, ninguém resolve nada	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-MX-4
+S-E2-BR-CO-0-1	S-E2-BR-CO-0	Quero reclamar do atendimento de vocês	E2	pt	BR	team-generated	2026-10-W2	true	E2	native-style BR rewrite of S-E2-CO-0
+S-E2-BR-CO-1-1	S-E2-BR-CO-1	Estou muito irritado, faz dias sem resposta	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-CO-1
+S-E2-BR-CO-2-1	S-E2-BR-CO-2	Desejo apresentar uma reclamação formal	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-CO-2
+S-E2-BR-CO-3-1	S-E2-BR-CO-3	O atendimento na agência foi péssimo, quero reclamar	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-CO-3
+S-E2-BR-CO-4-1	S-E2-BR-CO-4	Quero deixar uma reclamação, ninguém resolve nada	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-CO-4
+S-E2-BR-AR-0-1	S-E2-BR-AR-0	Quero registrar uma reclamação do atendimento	E2	pt	BR	team-generated	2026-10-W2	true	E2	native-style BR rewrite of S-E2-AR-0
+S-E2-BR-AR-1-1	S-E2-BR-AR-1	Estou muito irritado, faz dias que espero resposta	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-AR-1
+S-E2-BR-AR-2-1	S-E2-BR-AR-2	Quero apresentar uma reclamação formal	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-AR-2
+S-E2-BR-AR-3-1	S-E2-BR-AR-3	O atendimento na agência foi péssimo, quero reclamar	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-AR-3
+S-E2-BR-AR-4-1	S-E2-BR-AR-4	Quero deixar uma reclamação, ninguém resolve nada	E2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E2-AR-4
+S-E3-BR-MX-0-1	S-E3-BR-MX-0	Acho que caí num golpe, tem compras estranhas na conta	E3	pt	BR	team-generated	2026-10-W2	true	E3	native-style BR rewrite of S-E3-MX-0
+S-E3-BR-MX-1-1	S-E3-BR-MX-1	Alguém usou o meu cartão sem permissão, é uma fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-MX-1
+S-E3-BR-MX-2-1	S-E3-BR-MX-2	Vi movimentações estranhas, parece que me hackearam	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-MX-2
+S-E3-BR-MX-3-1	S-E3-BR-MX-3	Suspeito que clonaram o meu cartão	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-MX-3
+S-E3-BR-MX-4-1	S-E3-BR-MX-4	Chegou uma cobrança de outro país que eu não fiz, é fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-MX-4
+S-E3-BR-CO-0-1	S-E3-BR-CO-0	Acho que estão aplicando um golpe na minha conta	E3	pt	BR	team-generated	2026-10-W2	true	E3	native-style BR rewrite of S-E3-CO-0
+S-E3-BR-CO-1-1	S-E3-BR-CO-1	Alguém usou o meu cartão sem autorização, é fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-CO-1
+S-E3-BR-CO-2-1	S-E3-BR-CO-2	Vi movimentações estranhas, parece que roubaram os meus dados	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-CO-2
+S-E3-BR-CO-3-1	S-E3-BR-CO-3	Suspeito que clonaram o meu cartão	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-CO-3
+S-E3-BR-CO-4-1	S-E3-BR-CO-4	Aparece uma cobrança do exterior que eu não fiz, é fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-CO-4
+S-E3-BR-AR-0-1	S-E3-BR-AR-0	Acho que clonaram o meu cartão, tem gastos estranhos	E3	pt	BR	team-generated	2026-10-W2	true	E3	native-style BR rewrite of S-E3-AR-0
+S-E3-BR-AR-1-1	S-E3-BR-AR-1	Alguém usou o meu cartão sem permissão, é uma fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-AR-1
+S-E3-BR-AR-2-1	S-E3-BR-AR-2	Vi movimentações estranhas, parece que hackearam a minha conta	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-AR-2
+S-E3-BR-AR-3-1	S-E3-BR-AR-3	Suspeito que clonaram o meu cartão	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-AR-3
+S-E3-BR-AR-4-1	S-E3-BR-AR-4	Chegou uma cobrança do exterior que eu não fiz, é fraude	E3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E3-AR-4
+S-E4-BR-MX-0-1	S-E4-BR-MX-0	Quero falar com um atendente de verdade	E4	pt	BR	team-generated	2026-10-W2	true	E4	native-style BR rewrite of S-E4-MX-0
+S-E4-BR-MX-1-1	S-E4-BR-MX-1	Me transfira para um atendente humano, por favor	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-MX-1
+S-E4-BR-MX-2-1	S-E4-BR-MX-2	Isso não me serve, preciso ser atendido por alguém de verdade	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-MX-2
+S-E4-BR-MX-3-1	S-E4-BR-MX-3	Você pode me transferir para um atendente?	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-MX-3
+S-E4-BR-MX-4-1	S-E4-BR-MX-4	Já tentei várias vezes e não funciona, me passe para alguém	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-MX-4
+S-E4-BR-CO-0-1	S-E4-BR-CO-0	Me passa pra uma pessoa, por favor	E4	pt	BR	team-generated	2026-10-W2	true	E4	native-style BR rewrite of S-E4-CO-0
+S-E4-BR-CO-1-1	S-E4-BR-CO-1	Me passe para um atendente humano, por favor	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-CO-1
+S-E4-BR-CO-2-1	S-E4-BR-CO-2	Isso não funciona para mim, preciso ser atendido por alguém de verdade	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-CO-2
+S-E4-BR-CO-3-1	S-E4-BR-CO-3	Você pode me conectar com um atendente?	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-CO-3
+S-E4-BR-CO-4-1	S-E4-BR-CO-4	Já tentei várias vezes e nada, me passe para alguém	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-CO-4
+S-E4-BR-AR-0-1	S-E4-BR-AR-0	Quero falar com um humano, não com o robô	E4	pt	BR	team-generated	2026-10-W2	true	E4	native-style BR rewrite of S-E4-AR-0
+S-E4-BR-AR-1-1	S-E4-BR-AR-1	Me passe para um atendente humano, por favor	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-AR-1
+S-E4-BR-AR-2-1	S-E4-BR-AR-2	Isso não me serve, preciso ser atendido por alguém de verdade	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-AR-2
+S-E4-BR-AR-3-1	S-E4-BR-AR-3	Você pode me transferir para um atendente?	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-AR-3
+S-E4-BR-AR-4-1	S-E4-BR-AR-4	Já tentei várias vezes e não funciona, me passe para alguém	E4	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-E4-AR-4
+S-X1-BR-MX-0-1	S-X1-BR-MX-0	Dá pra aumentar o limite do meu cartão?	X1	pt	BR	team-generated	2026-10-W2	true	X1	native-style BR rewrite of S-X1-MX-0
+S-X1-BR-MX-1-1	S-X1-BR-MX-1	Eu me qualifico para um empréstimo pessoal?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-MX-1
+S-X1-BR-MX-2-1	S-X1-BR-MX-2	Preciso que aumentem o meu limite de crédito	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-MX-2
+S-X1-BR-MX-3-1	S-X1-BR-MX-3	Vocês podem me dar um financiamento de veículo?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-MX-3
+S-X1-BR-MX-4-1	S-X1-BR-MX-4	Eu sou elegível para um financiamento imobiliário?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-MX-4
+S-X1-BR-CO-0-1	S-X1-BR-CO-0	Como faço pra aumentar o limite do cartão?	X1	pt	BR	team-generated	2026-10-W2	true	X1	native-style BR rewrite of S-X1-CO-0
+S-X1-BR-CO-1-1	S-X1-BR-CO-1	Eu me qualifico para um crédito de livre investimento?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-CO-1
+S-X1-BR-CO-2-1	S-X1-BR-CO-2	Preciso que aumentem o meu limite de crédito	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-CO-2
+S-X1-BR-CO-3-1	S-X1-BR-CO-3	Vocês podem aprovar um empréstimo para mim?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-CO-3
+S-X1-BR-CO-4-1	S-X1-BR-CO-4	Eu sou elegível para um crédito imobiliário?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-CO-4
+S-X1-BR-AR-0-1	S-X1-BR-AR-0	Tem como aumentar o limite do cartão?	X1	pt	BR	team-generated	2026-10-W2	true	X1	native-style BR rewrite of S-X1-AR-0
+S-X1-BR-AR-1-1	S-X1-BR-AR-1	Eu me qualifico para um empréstimo pessoal?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-AR-1
+S-X1-BR-AR-2-1	S-X1-BR-AR-2	Preciso que aumentem o meu limite de crédito	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-AR-2
+S-X1-BR-AR-3-1	S-X1-BR-AR-3	Vocês podem me dar um crédito?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-AR-3
+S-X1-BR-AR-4-1	S-X1-BR-AR-4	Eu sou elegível para um crédito imobiliário?	X1	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X1-AR-4
+S-X2-BR-MX-0-1	S-X2-BR-MX-0	Faz um Pix de 2000 reais pro meu irmão	X2	pt	BR	team-generated	2026-10-W2	true	X2	native-style BR rewrite of S-X2-MX-0
+S-X2-BR-MX-1-1	S-X2-BR-MX-1	Quero pagar o meu cartão com a minha conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-MX-1
+S-X2-BR-MX-2-1	S-X2-BR-MX-2	Faça um envio de dinheiro para este número de conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-MX-2
+S-X2-BR-MX-3-1	S-X2-BR-MX-3	Pague a minha conta de luz com o meu saldo	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-MX-3
+S-X2-BR-MX-4-1	S-X2-BR-MX-4	Envie 1000 reais para esta conta, por favor	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-MX-4
+S-X2-BR-CO-0-1	S-X2-BR-CO-0	Faz uma transferência de 500 reais pra minha mãe	X2	pt	BR	team-generated	2026-10-W2	true	X2	native-style BR rewrite of S-X2-CO-0
+S-X2-BR-CO-1-1	S-X2-BR-CO-1	Quero pagar o cartão com a minha conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-CO-1
+S-X2-BR-CO-2-1	S-X2-BR-CO-2	Faça uma transferência para esta conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-CO-2
+S-X2-BR-CO-3-1	S-X2-BR-CO-3	Pague a minha fatura de serviços com o meu saldo	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-CO-3
+S-X2-BR-CO-4-1	S-X2-BR-CO-4	Me envie 100 reais para esta conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-CO-4
+S-X2-BR-AR-0-1	S-X2-BR-AR-0	Transfere 5000 reais pro meu irmão	X2	pt	BR	team-generated	2026-10-W2	true	X2	native-style BR rewrite of S-X2-AR-0
+S-X2-BR-AR-1-1	S-X2-BR-AR-1	Quero pagar o cartão com a minha conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-AR-1
+S-X2-BR-AR-2-1	S-X2-BR-AR-2	Faça um envio de dinheiro para esta conta	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-AR-2
+S-X2-BR-AR-3-1	S-X2-BR-AR-3	Pague a minha conta de luz com o meu saldo	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-AR-3
+S-X2-BR-AR-4-1	S-X2-BR-AR-4	Envie 2000 reais para esta conta, por favor	X2	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X2-AR-4
+S-X3-BR-MX-0-1	S-X3-BR-MX-0	Qual a agência mais perto de mim?	X3	pt	BR	team-generated	2026-10-W2	true	I6	native-style BR rewrite of S-X3-MX-0
+S-X3-BR-MX-1-1	S-X3-BR-MX-1	Qual é o horário de atendimento do banco?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-MX-1
+S-X3-BR-MX-2-1	S-X3-BR-MX-2	Como eu abro uma conta nova?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-MX-2
+S-X3-BR-MX-3-1	S-X3-BR-MX-3	Vocês têm um aplicativo para o celular?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-MX-3
+S-X3-BR-MX-4-1	S-X3-BR-MX-4	Como eu troco a minha senha do aplicativo?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-MX-4
+S-X3-BR-CO-0-1	S-X3-BR-CO-0	Onde tem uma agência perto daqui?	X3	pt	BR	team-generated	2026-10-W2	true	X3	native-style BR rewrite of S-X3-CO-0
+S-X3-BR-CO-1-1	S-X3-BR-CO-1	Qual é o horário de atendimento?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-CO-1
+S-X3-BR-CO-2-1	S-X3-BR-CO-2	Como eu abro uma conta nova?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-CO-2
+S-X3-BR-CO-3-1	S-X3-BR-CO-3	Vocês têm um aplicativo para o celular?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-CO-3
+S-X3-BR-CO-4-1	S-X3-BR-CO-4	Como eu troco a senha do aplicativo?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-CO-4
+S-X3-BR-AR-0-1	S-X3-BR-AR-0	Qual é a agência mais perto?	X3	pt	BR	team-generated	2026-10-W2	true	I6	native-style BR rewrite of S-X3-AR-0
+S-X3-BR-AR-1-1	S-X3-BR-AR-1	Qual é o horário de atendimento do banco?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-AR-1
+S-X3-BR-AR-2-1	S-X3-BR-AR-2	Como eu abro uma conta nova?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-AR-2
+S-X3-BR-AR-3-1	S-X3-BR-AR-3	Vocês têm um aplicativo para o celular?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-AR-3
+S-X3-BR-AR-4-1	S-X3-BR-AR-4	Como eu troco a senha do aplicativo?	X3	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-X3-AR-4
+S-OTHER-BR-MX-0-1	S-OTHER-BR-MX-0	E aí, beleza?	OTHER	pt	BR	team-generated	2026-10-W2	true	OTHER	native-style BR rewrite of S-OTHER-MX-0
+S-OTHER-BR-MX-1-1	S-OTHER-BR-MX-1	Obrigado, muito gentil	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-MX-1
+S-OTHER-BR-MX-2-1	S-OTHER-BR-MX-2	Como está o tempo hoje?	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-MX-2
+S-OTHER-BR-MX-3-1	S-OTHER-BR-MX-3	kkkk ok	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-MX-3
+S-OTHER-BR-MX-4-1	S-OTHER-BR-MX-4	asdf qwerty	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-MX-4
+S-OTHER-BR-CO-0-1	S-OTHER-BR-CO-0	Oi, bom dia, tudo certo?	OTHER	pt	BR	team-generated	2026-10-W2	true	OTHER	native-style BR rewrite of S-OTHER-CO-0
+S-OTHER-BR-CO-1-1	S-OTHER-BR-CO-1	Muito obrigado, muito gentil	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-CO-1
+S-OTHER-BR-CO-2-1	S-OTHER-BR-CO-2	Como vai você?	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-CO-2
+S-OTHER-BR-CO-3-1	S-OTHER-BR-CO-3	beleza, tchau	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-CO-3
+S-OTHER-BR-CO-4-1	S-OTHER-BR-CO-4	hmm não sei	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-CO-4
+S-OTHER-BR-AR-0-1	S-OTHER-BR-AR-0	Oi, tudo certo por aí?	OTHER	pt	BR	team-generated	2026-10-W2	true	OTHER	native-style BR rewrite of S-OTHER-AR-0
+S-OTHER-BR-AR-1-1	S-OTHER-BR-AR-1	Obrigado, muito gentil	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-AR-1
+S-OTHER-BR-AR-2-1	S-OTHER-BR-AR-2	Como você está?	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-AR-2
+S-OTHER-BR-AR-3-1	S-OTHER-BR-AR-3	beleza, pronto	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-AR-3
+S-OTHER-BR-AR-4-1	S-OTHER-BR-AR-4	kkk não entendi nada	OTHER	pt	BR	translated	2026-10-W2	false		ES->PT translation of S-OTHER-AR-4

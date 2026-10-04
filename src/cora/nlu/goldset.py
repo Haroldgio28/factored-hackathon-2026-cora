@@ -30,7 +30,7 @@ import pandas as pd
 
 from cora.nlu.labels import Intent, Provenance, Variant
 
-__all__ = ["COLUMNS", "GoldSetError", "cohen_kappa", "load"]
+__all__ = ["COLUMNS", "GoldSetError", "check_pairing", "cohen_kappa", "load"]
 
 # Exact column order of data/nlu/gold.tsv and gold_pt.tsv (plan NIT-3: scenario_id and month are
 # their own explicit columns, not parsed out of `id`).
@@ -141,6 +141,39 @@ def load(path: Path | str) -> pd.DataFrame:
 
     df["double_labeled"] = double_labeled
     return df
+
+
+def check_pairing(es: pd.DataFrame, pt: pd.DataFrame) -> None:
+    """Assert the Portuguese set covers every Spanish row (REQ-19 language coverage, task 3.2).
+
+    `es` and `pt` are frames returned by `load`. Every PT scenario id is `S-<intent>-BR-<src>-<idx>`,
+    a BR-tagged derivative of its Spanish source `S-<intent>-<src>-<idx>`. This maps each PT row back
+    to its ES source and fails closed (`GoldSetError`) if any ES scenario has no PT counterpart, if a
+    PT row points at a non-existent ES scenario, or if a PT row carries the wrong language/variant -
+    so a dropped or mislabeled translation is a loud failure, not a silent coverage gap.
+    """
+    if "BR" not in set(pt["variant"]):
+        raise GoldSetError("pt frame has no BR rows; passed the es frame as pt?")
+
+    es_scenarios = set(es["scenario_id"])
+    covered: set[str] = set()
+    for row in pt.itertuples(index=False):
+        if row.language != "pt" or row.variant != "BR":
+            raise GoldSetError(
+                f"pt row {row.id!r}: expected language=pt variant=BR, got {row.language}/{row.variant}"
+            )
+        # S-<intent>-BR-<src>-<idx>  ->  S-<intent>-<src>-<idx>
+        parts = row.scenario_id.split("-")
+        if len(parts) != 5 or parts[0] != "S" or parts[2] != "BR":
+            raise GoldSetError(f"pt row {row.id!r}: malformed scenario_id {row.scenario_id!r}")
+        source = f"{parts[0]}-{parts[1]}-{parts[3]}-{parts[4]}"
+        if source not in es_scenarios:
+            raise GoldSetError(f"pt row {row.id!r}: points at unknown es scenario {source!r}")
+        covered.add(source)
+
+    missing = es_scenarios - covered
+    if missing:
+        raise GoldSetError(f"{len(missing)} es scenarios have no pt translation, e.g. {sorted(missing)[:3]}")
 
 
 def cohen_kappa(df: pd.DataFrame) -> float:

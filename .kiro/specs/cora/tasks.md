@@ -103,8 +103,9 @@ Rules for every task:
   - `documentation/LABELING_GUIDE.md`; **team-written** labeled utterances (es MX/CO/AR + pt) - dataset transcripts are templated and only seed examples (EDA F7); provenance column; double-label 20% and report κ.
   - Done: `src/cora/nlu/labels.py` (re-exports policy `Intent`; `Provenance`/`Variant` StrEnums), `src/cora/nlu/goldset.py` (fail-closed TSV loader + Cohen's κ via a direct counting formula, no ML dep yet), `data/nlu/gold.tsv` (240 team-generated ES rows, 15/class balanced across all 16 classes, MX/CO/AR, authoring-wave `month`, `scenario_id` grouping) authored by `data/nlu/build_gold.py`, and `documentation/LABELING_GUIDE.md` (per-class guidance + anchors + provenance scheme + double-label protocol). 48 rows double-labeled (20.0%), **Cohen's κ = 0.733**. Evidence: `tests/unit/test_goldset.py` (real-file balance/κ + 11 fail-closed cases). `ruff` clean; `uv run pytest` green.
   - _Requirements: REQ-30, REQ-37_
-- [ ] **3.2 Portuguese set**
+- [x] **3.2 Portuguese set**
   - ES->PT translation of the gold set (marked TRANSLATED) + native-style rewrites of 20%; reviewer notes; documented limitation.
+  - Done: `data/nlu/gold_pt.tsv` (240 BR rows mirroring the ES set 1:1 - 192 `translated` + 48 `team-generated` native rewrites = 20%) authored by `data/nlu/build_gold_pt.py`; each row's `reviewer_note` records provenance + source `scenario_id`. `cora.nlu.goldset.check_pairing` (new, fail-closed) proves every ES scenario has a PT counterpart; double-labeling mirrors ES so Cohen's κ = 0.733 on both. `documentation/LABELING_GUIDE.md` gains a "Language coverage & limitations" section (synthetic/translationese caveat, per-language reporting deferred to 3.6). Evidence: `tests/unit/test_goldset.py` (+6 PT cases: balance, 20% rewrites, provenance notes, pairing, 2 fail-closed pairing cases). `ruff` clean; `uv run pytest` green.
   - _Requirements: REQ-18, REQ-19_
 - [ ] **3.3 Leakage-safe splits**
   - Group-by-customer + time split; near-duplicate removal; split report.

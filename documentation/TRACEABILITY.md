@@ -31,7 +31,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-17 | Normal resolution path | 05 | 7.5 | demo + scenarios | Planned |
 | SRC-18 | Ambiguous / unsupported request | 05, 07 | 7.5 | demo + scenarios | Planned |
 | SRC-19 | Human-intervention case | 05, 15, 17 | 4.5, 7.5 | demo + handoff | Planned |
-| SRC-20 | Spanish and Portuguese | 05, 18 | 3.2, 7.5 | per-language results | Planned |
+| SRC-20 | Spanish and Portuguese | 05, 18 | 3.2, 7.5 | `data/nlu/gold.tsv` (240 ES, MX/CO/AR) + `data/nlu/gold_pt.tsv` (240 PT/BR, 192 translated + 48 native rewrites) with 1:1 pairing (`cora.nlu.goldset.check_pairing`); per-language model results pending at 3.6/7.5 | Partial |
 | SRC-21 | Report data/language limitations | 19, 52 | 7.4 | LIMITATIONS section | Planned |
 | SRC-22 | Analyze reasons, demand, quality, constraints | 01 | 1.8 | EDA + data_quality.md | Partial |
 | SRC-23 | Prioritize workflow; define outcomes | 01, 02 | 1.8, 7.3 | outcomes table | Partial |
@@ -69,7 +69,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-55 | Batch/incremental/streaming as needed | 24 | 1.4 | ADR-006 | Partial |
 | SRC-56 | Labeled update-correctness fixture | 26 | 1.7 | fixture tests | Planned |
 | SRC-57 | Organizer-approved data only | 37 | 3.1 | data provenance table | Planned |
-| SRC-58 | Label real/synthetic/team-generated | 19, 30, 37 | 3.1, 3.2 | provenance column | Planned |
+| SRC-58 | Label real/synthetic/team-generated | 19, 30, 37 | 3.1, 3.2 | `provenance` column on every gold row (`cora.nlu.labels.Provenance`: `dataset-seed`/`team-generated`/`translated`); ES = `team-generated`, PT = 192 `translated` + 48 `team-generated`, each PT `reviewer_note` naming provenance + source scenario; loader fails closed on unknown provenance | Done |
 | SRC-59 | No private data/credentials in submission or LLM calls | 36, 52 | 0.2, 4.2, 7.6 | gitleaks job in `.github/workflows/ci.yml` (0.2 done); PII masking (4.2) + clean-clone audit (7.6) pending | Partial |
 | SRC-60 | Mock tools with documented contracts | 38 | 2.2 | `documentation/TOOL_CONTRACTS.md` (inputs/outputs/errors/side-effects/limitations per tool) | Done |
 | SRC-61 | Trusted authentication | 10, 11 | 2.1 | `tests/unit/test_identity.py` (OTP + HMAC JWT, TTL, jti, ID-only refusal) | Done |
