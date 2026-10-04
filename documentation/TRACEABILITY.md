@@ -54,9 +54,9 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-40 | Incorrect / missing data cases | 42 | 6.1 | adversarial results | Planned |
 | SRC-41 | Expired sessions | 11, 42 | 2.1, 6.1 | `tests/unit/test_identity.py` expired/tampered token fail-closed (2.1 done); eval cases pending (6.1) | Partial |
 | SRC-42 | Unauthorized access attempts | 12, 42 | 2.2, 6.1 | `tests/unit/test_tools.py` FORBIDDEN + access log (2.2 done); eval cases pending (6.1) | Partial |
-| SRC-43 | Prompt injection | 35, 42 | 3.7, 6.1 | adversarial results | Planned |
+| SRC-43 | Prompt injection | 35, 42 | 3.7, 6.1 | `cora.nlu.injection.screen` (ordered es+pt+en regex rules → `injection_hit` + matched rule ids, every hit logged) feeds `PolicyInput.injection_hit`; it is defense-in-depth, NOT the boundary (D4). `tests/unit/test_injection.py` fires on es/pt payloads, stays quiet on benign text, and the **"miss still safe"** case asserts a payload the screen fails to flag leaves the policy decision unchanged (permissions never read model/user text). 3.7 done; adversarial eval cases pending (6.1). | Partial |
 | SRC-44 | Tool failures | 40, 42 | 5.2, 6.1 | fault-injection results | Planned |
-| SRC-45 | Multilingual ambiguity | 07, 18, 42 | 3.7, 6.1 | adversarial results | Planned |
+| SRC-45 | Multilingual ambiguity | 07, 18, 42 | 3.7, 6.1 | `cora.nlu.language.detect` returns `{es, pt, other}` + `low_confidence`; low/mixed confidence keeps the session language and confirms, never guessing a third language (REQ-18). `cora.nlu.entities.extract_entities` masks PII then fails closed to `UNAVAILABLE` on any bad/empty reply → routes to clarify via `PolicyInput.ambiguous_entity` (REQ-07 per-turn signal; the 2-turn clarify→escalate cap is Phase-5 session state, D5). `tests/unit/test_language.py` + `tests/unit/test_entities.py` cover the fail-closed contract. 3.7 done; adversarial eval cases pending (6.1). | Partial |
 | SRC-46 | Report outcomes w/ sizes & limits | 43 | 6.6 | EVALUATION.md | Planned |
 | SRC-47 | Tracing | 39 | 5.1 | trace samples | Planned |
 | SRC-48 | Bounded retries | 40 | 5.2 | retry tests | Planned |

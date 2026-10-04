@@ -57,6 +57,9 @@ select = ["E", "F", "I", "UP", "B"]
 # be wrapped without hurting readability, and `ruff format` already lays the tuples out; E501 on
 # the lone regex-string lines is noise here. Same rationale as the data-dictionary lists above.
 "src/cora/nlu/baselines.py" = ["E501"]
+# The injection screen is one alternation regex per rule (es+pt+en). Same rationale as the
+# keyword baseline: a rule's regex cannot wrap without hurting readability.
+"src/cora/nlu/injection.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

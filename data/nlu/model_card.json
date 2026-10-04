@@ -15,8 +15,14 @@
     "primary": "fasttext lid.176.ftz",
     "size": "~917 KB (compressed .ftz, not the ~126 MB .bin)",
     "backend": "fasttext-wheel==0.9.2",
+    "url": "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz",
+    "committed": false,
+    "cache_path": "data/nlu/lid.176.ftz (downloaded once on first offline use; not committed)",
     "fallback": "lingua-language-detector==2.0.2 (pure Python) if no fasttext wheel installs",
-    "wired_at": "task 3.7"
+    "wired_at": "task 3.7",
+    "wired": true,
+    "seam": "cora.nlu.language.detect(text) -> LanguageResult(lang in {es,pt,other}, confidence, low_confidence); StubDetector under CORA_NLU_STUB=1 (tested path)",
+    "fail_closed": "low/mixed confidence or non-es/pt result flags low_confidence -> keep session language and confirm, never guess a third language (REQ-18)"
   },
   "llm": {
     "provider": "Amazon Bedrock (ADR-005)",
@@ -93,6 +99,11 @@
   "prompts": {
     "zero_shot_intent.es.txt": "versioned under src/cora/agent/prompts/",
     "zero_shot_intent.pt.txt": "versioned under src/cora/agent/prompts/",
+    "entity_extraction.txt": {
+      "path": "src/cora/agent/prompts/entity_extraction.txt",
+      "sha256": "87175fa70d282835c7e3dd5e60d1f18b2a157caf2a9039141d11a0152fe9d118",
+      "used_by": "task 3.7 cora.nlu.entities.extract_entities (fail-closed JSON extraction)"
+    },
     "note": "Prompt SHA-256 hashes are recorded in traces at Phase 5 (structure steering)."
   },
   "intent_model_results": {
