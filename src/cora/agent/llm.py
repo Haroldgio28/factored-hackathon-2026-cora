@@ -106,12 +106,16 @@ class BedrockLLMClient:
         reraise=True,
     )
     def _converse(self, *, system: str, user: str, max_tokens: int) -> str:
-        response = self._client.converse(
-            modelId=self._settings.bedrock_model_id,
-            system=[{"text": system}],
-            messages=[{"role": "user", "content": [{"text": user}]}],
-            inferenceConfig={"maxTokens": max_tokens, "temperature": 0.0},
-        )
+        # Converse rejects a `system` block whose text is empty, so omit the field entirely when
+        # the caller passes no system prompt (the generator does: system="").
+        kwargs: dict[str, object] = {
+            "modelId": self._settings.bedrock_model_id,
+            "messages": [{"role": "user", "content": [{"text": user}]}],
+            "inferenceConfig": {"maxTokens": max_tokens, "temperature": 0.0},
+        }
+        if system.strip():
+            kwargs["system"] = [{"text": system}]
+        response = self._client.converse(**kwargs)
         blocks = response["output"]["message"]["content"]
         return "".join(block.get("text", "") for block in blocks).strip()
 
