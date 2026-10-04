@@ -798,7 +798,73 @@
     },
     "figures": [
       "documentation/reports/figures/intent_confusion_matrix.png",
-      "documentation/reports/figures/intent_reliability_sigmoid_vs_isotonic.png"
+      "documentation/reports/figures/intent_reliability_sigmoid_vs_isotonic.png",
+      "documentation/reports/figures/intent_cost_vs_threshold.png"
+    ],
+    "thresholds": {
+      "tau_escalate": 0.2,
+      "tau_clarify": 0.5,
+      "validation_cost": 33.0,
+      "n_validation": 45,
+      "selected_on": "validation (frozen before test)"
+    },
+    "error_analysis_examples": [
+      {
+        "utterance": "Oye, ¿me checas mi saldo por favor?",
+        "language": "es",
+        "true": "I1",
+        "pred": "X1",
+        "confidence": 0.18
+      },
+      {
+        "utterance": "Hágame el favor y me dice mi saldo",
+        "language": "es",
+        "true": "I1",
+        "pred": "I2",
+        "confidence": 0.319
+      },
+      {
+        "utterance": "¿Cuánto gasté el fin de semana pasado?",
+        "language": "es",
+        "true": "I2",
+        "pred": "I1",
+        "confidence": 0.452
+      },
+      {
+        "utterance": "Quiero ver mis compras recientes",
+        "language": "es",
+        "true": "I2",
+        "pred": "E1",
+        "confidence": 0.262
+      },
+      {
+        "utterance": "¿Qué pasó con el pago que hice ayer, no se ha reflejado?",
+        "language": "es",
+        "true": "I3",
+        "pred": "E2",
+        "confidence": 0.222
+      },
+      {
+        "utterance": "¿Qué pasó con el pago de ayer que no se ve?",
+        "language": "es",
+        "true": "I3",
+        "pred": "I6",
+        "confidence": 0.329
+      },
+      {
+        "utterance": "¿Cuántos días llevo de atraso en el pago?",
+        "language": "es",
+        "true": "I4",
+        "pred": "I1",
+        "confidence": 0.326
+      },
+      {
+        "utterance": "¿Qué estado tiene mi tarjeta en este momento?",
+        "language": "es",
+        "true": "I4",
+        "pred": "I2",
+        "confidence": 0.335
+      }
     ]
   }
 }

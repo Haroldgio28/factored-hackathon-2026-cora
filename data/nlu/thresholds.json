@@ -1,0 +1,24 @@
+{
+  "tau_escalate": 0.2,
+  "tau_clarify": 0.5,
+  "selected_on": "validation",
+  "validation_cost": 33.0,
+  "n_validation": 45,
+  "cost_matrix": {
+    "unsafe_answer": 100.0,
+    "unnecessary_escalate": 10.0,
+    "clarify": 1.0,
+    "correct_answer": 0.0
+  },
+  "grid": {
+    "start": 0.0,
+    "stop": 1.0,
+    "n": 21
+  },
+  "invariant": "tau_escalate <= tau_clarify (POL-060 before POL-070); asserted at selection",
+  "rules": {
+    "POL-060": "confidence_below_escalate",
+    "POL-070": "confidence_below_clarify"
+  },
+  "note": "Frozen on the validation split before the test split was evaluated; feeds the rules.yaml POL-060/POL-070 placeholders. tau_fraud (POL-040) is NOT re-derived here."
+}
