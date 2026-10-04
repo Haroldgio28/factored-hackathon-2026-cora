@@ -1,0 +1,55 @@
+{
+  "component": "cora-nlu",
+  "phase": 3,
+  "started_task": "3.4",
+  "note": "Started at task 3.4 (baselines + LLM client). Real intent-model metrics (macro-F1, per-class recall, ECE, confusion matrix, es/pt breakdown) are filled in at tasks 3.5/3.6 from the offline training run; this file currently records the model/dependency decisions only.",
+  "embedding_model": {
+    "hf_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "revision": "bf3bf13ab40c3157080a7ab344c831b9ad18b5eb",
+    "dim": 384,
+    "device": "cpu",
+    "committed": false,
+    "reason": "Weights are not committed (repo stays small; redistribution terms). The id+revision are pinned here; the encoder downloads and caches on the first offline run (tasks 3.5/3.6). Tests use a seeded hash StubEncoder under CORA_NLU_STUB=1."
+  },
+  "language_id_model": {
+    "primary": "fasttext lid.176.ftz",
+    "size": "~917 KB (compressed .ftz, not the ~126 MB .bin)",
+    "backend": "fasttext-wheel==0.9.2",
+    "fallback": "lingua-language-detector==2.0.2 (pure Python) if no fasttext wheel installs",
+    "wired_at": "task 3.7"
+  },
+  "llm": {
+    "provider": "Amazon Bedrock (ADR-005)",
+    "api": "Converse",
+    "model_id_source": "settings.bedrock_model_id (CORA_BEDROCK_MODEL_ID); never hard-coded (D3)",
+    "fail_closed": "unconfigured or erroring after bounded tenacity retry raises LLMUnavailable; no silent model-id fallback (that is a Phase-5 concern)",
+    "test_path": "StubLLMClient (CORA_NLU_STUB=1); no network, no AWS"
+  },
+  "dependencies_nlu_group": [
+    {"package": "scikit-learn", "pin": "==1.5.2", "justification": "LogReg + CalibratedClassifierCV + TF-IDF; the only ML dep needed", "cp312_windows_wheel": true},
+    {"package": "sentence-transformers", "pin": "==3.0.1", "justification": "multilingual MiniLM encoder; makes PT work with no PT training data", "cp312_windows_wheel": true},
+    {"package": "torch", "pin": "==2.4.1", "justification": "sentence-transformers backend, CPU build (host ~4 GB RAM)", "cp312_windows_wheel": true},
+    {"package": "fasttext-wheel", "pin": "==0.9.2", "justification": "prebuilt fastText lid.176; avoids the C++ build the fasttext sdist needs", "cp312_windows_wheel": true},
+    {"package": "joblib", "pin": "==1.4.2", "justification": "persist the fitted calibrated head", "cp312_windows_wheel": true},
+    {"package": "numpy", "pin": "==1.26.4", "justification": "version ST/sklearn/torch 2.4 agree on; avoids the numpy-2 ABI split", "cp312_windows_wheel": true},
+    {"package": "tenacity", "pin": "==9.0.0", "justification": "bounded retry for the Bedrock Converse call (tech steering mandates tenacity for retries)", "cp312_windows_wheel": true}
+  ],
+  "baseline_results": {
+    "note": "Offline measurement over the full committed gold set (480 rows, es+pt), task 3.4. These are the numbers the learned classifier (3.5) must beat; the leakage-safe-split version is reported in intent_model.md at 3.6. B-zs (zero-shot) is reported as skipped here because Bedrock is unconfigured in the sandbox (CORA_BEDROCK_MODEL_ID empty) and B-zs fails closed rather than guessing.",
+    "n": 480,
+    "majority": {"predicted_class": "A1", "accuracy": 0.062},
+    "keyword": {
+      "accuracy_overall": 0.744,
+      "accuracy_es": 0.812,
+      "accuracy_pt": 0.675,
+      "recall_escalation": {"E1": 0.633, "E2": 0.967, "E3": 0.867, "E4": 0.5}
+    },
+    "zero_shot": "skipped (no CORA_BEDROCK_MODEL_ID in the sandbox; B-zs fails closed to OTHER)"
+  },
+  "dependency_resolution": "uv add --group nlu ...; uv lock verified (84 packages); uv sync --group nlu installs and imports clean on Windows / Python 3.12.10. fasttext-wheel==0.9.2 installed from a prebuilt cp312 wheel, so the lingua fallback was NOT needed.",
+  "prompts": {
+    "zero_shot_intent.es.txt": "versioned under src/cora/agent/prompts/",
+    "zero_shot_intent.pt.txt": "versioned under src/cora/agent/prompts/",
+    "note": "Prompt SHA-256 hashes are recorded in traces at Phase 5 (structure steering)."
+  }
+}
