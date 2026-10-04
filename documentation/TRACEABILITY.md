@@ -13,9 +13,9 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC | Obligation (short) | REQ | Task | Evidence | Status |
 |---|---|---|---|---|---|
 | SRC-01 | Working AI-first system | 04, 49 | 5.3, 5.4 | API + demo UI | Planned |
-| SRC-02 | Understand complex interactions | 06 | 4.1 | state machine + session store `tests/unit/test_agent_graph.py` (edges); multi-turn eval scenarios pending | Partial |
+| SRC-02 | Understand complex interactions | 06 | 4.1 | §4 state machine + per-session store (`src/cora/agent/state.py`) + deterministic cross-turn reference resolution (`src/cora/agent/references.py`); `tests/unit/test_agent_graph.py` (every edge) + `tests/unit/test_references.py`. Multi-turn held-out eval scenarios pending (6.1) | Partial |
 | SRC-03 | Use data/tools securely | 10, 12 | 2.1, 2.2 | `tests/unit/test_identity.py` (authN) + `tests/unit/test_tools.py` (authZ, session-injected `customer_id`) | Done |
-| SRC-04 | Complete service workflows | 04 | 4.1 | §4 state machine `src/cora/agent/graph.py` + `tests/unit/test_agent_graph.py` (every edge); node bodies for 4.2/4.4/4.5/4.6 pending | Partial |
+| SRC-04 | Complete service workflows | 04 | 4.1 | §4 state machine `src/cora/agent/graph.py` with all node bodies wired end-to-end: response generation + es/pt templates (4.2 `src/cora/agent/templates.py` + `generator.py`), grounding (4.3 `grounding.py`), Confirm→Execute→Verify (4.4 `confirmation.py`), escalation + handoff + dispute intake (4.5 `src/cora/handoff/`), credit/money-movement guards (4.6); `tests/unit/test_agent_graph.py` (every edge) + per-subtask tests. End-to-end eval across the five demo paths pending (6.1/7.5) | Partial |
 | SRC-05 | Involve humans when needed | 15, 16 | 4.5 | `src/cora/handoff/` (package builder + `JsonHandoffStore` + E1 dispute intake + Very-Negative/tool-failure escalation streaks), wired into `src/cora/agent/graph.py` Handoff node; `ui/agent_console.py` renders the queue; `tests/unit/test_handoff_package.py` + `test_handoff_store.py` + `test_dispute_intake.py` (every E1-E4 trigger escalates+persists) | Done |
 | SRC-06 | Focused problem, end-to-end | 01, 04 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
 | SRC-07 | Data explains why it matters | 01 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
