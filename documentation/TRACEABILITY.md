@@ -47,7 +47,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-33 | Handoff contents | 16 | 4.5 | handoff schema | Planned |
 | SRC-34 | Contracts, checks, lineage, freshness | 20-24, 27 | 1.1-1.6 | manifests + reports | Planned |
 | SRC-35 | Learned component vs baseline | 29 | 3.4, 3.5 | intent_model.md | Planned |
-| SRC-36 | Valid labels | 30 | 3.1 | LABELING_GUIDE + κ | Planned |
+| SRC-36 | Valid labels | 30, 37 | 3.1 | `documentation/LABELING_GUIDE.md` + `data/nlu/gold.tsv` (team-written, provenance-tagged, 240 rows/16 classes) + `cora.nlu.goldset` loader (fail-closed) + `tests/unit/test_goldset.py`; Cohen's κ = 0.733 | Done |
 | SRC-37 | Prevent leakage | 31 | 3.3 | split report | Planned |
 | SRC-38 | Justify representation, metrics, thresholds, splits | 31, 32 | 3.3, 3.6 | intent_model.md | Planned |
 | SRC-39 | Held-out evaluation | 42 | 6.1 | scenarios.jsonl | Planned |

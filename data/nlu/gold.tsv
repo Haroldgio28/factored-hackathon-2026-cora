@@ -1,0 +1,241 @@
+id	scenario_id	utterance	intent	language	variant	provenance	month	double_labeled	label_b	reviewer_note
+S-I1-MX-0-1	S-I1-MX-0	¿Cuánto dinero tengo en mi cuenta?	I1	es	MX	team-generated	2026-10-W1	true	I4	double-labeled (disagreement)
+S-I1-MX-1-1	S-I1-MX-1	Oye, ¿me checas mi saldo por favor?	I1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-MX-2-1	S-I1-MX-2	Quiero saber cuánto me queda disponible en la tarjeta	I1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-MX-3-1	S-I1-MX-3	¿Cuál es mi saldo actual?	I1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-MX-4-1	S-I1-MX-4	Necesito ver cuánto tengo ahorita en mi cuenta de débito	I1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-CO-0-1	S-I1-CO-0	¿Cuánto tengo en la cuenta?	I1	es	CO	team-generated	2026-10-W1	true	I1	double-labeled (agreement)
+S-I1-CO-1-1	S-I1-CO-1	Hágame el favor y me dice mi saldo	I1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-CO-2-1	S-I1-CO-2	Quisiera saber el cupo disponible de mi tarjeta	I1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-CO-3-1	S-I1-CO-3	¿Me puede decir cuánta plata tengo disponible?	I1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-CO-4-1	S-I1-CO-4	Necesito consultar el saldo de mi cuenta de ahorros	I1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-AR-0-1	S-I1-AR-0	¿Cuánta plata tengo en la cuenta?	I1	es	AR	team-generated	2026-10-W1	true	I4	double-labeled (disagreement)
+S-I1-AR-1-1	S-I1-AR-1	Che, ¿me decís mi saldo?	I1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-AR-2-1	S-I1-AR-2	Quiero saber el límite disponible de la tarjeta	I1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-AR-3-1	S-I1-AR-3	¿Cuál es mi saldo hoy?	I1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I1-AR-4-1	S-I1-AR-4	Necesito ver cuánto me queda en la caja de ahorro	I1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-MX-0-1	S-I2-MX-0	¿Me enseñas mis últimos movimientos?	I2	es	MX	team-generated	2026-10-W1	true	I2	double-labeled (agreement)
+S-I2-MX-1-1	S-I2-MX-1	Quiero ver mis compras de esta semana	I2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-MX-2-1	S-I2-MX-2	¿Cuánto gasté el fin de semana pasado?	I2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-MX-3-1	S-I2-MX-3	Muéstrame las transacciones de mi tarjeta de este mes	I2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-MX-4-1	S-I2-MX-4	¿Cuándo fue mi última compra?	I2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-CO-0-1	S-I2-CO-0	¿Me muestra los últimos movimientos de la cuenta?	I2	es	CO	team-generated	2026-10-W1	true	I2	double-labeled (agreement)
+S-I2-CO-1-1	S-I2-CO-1	Quiero ver mis compras recientes	I2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-CO-2-1	S-I2-CO-2	¿Cuánto gasté la semana pasada?	I2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-CO-3-1	S-I2-CO-3	Necesito el historial de transacciones del mes	I2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-CO-4-1	S-I2-CO-4	¿Cuál fue mi último movimiento?	I2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-AR-0-1	S-I2-AR-0	Mostrame los últimos movimientos de la tarjeta	I2	es	AR	team-generated	2026-10-W1	true	I2	double-labeled (agreement)
+S-I2-AR-1-1	S-I2-AR-1	Quiero ver mis compras de los últimos días	I2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-AR-2-1	S-I2-AR-2	¿Cuánto gasté este mes?	I2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-AR-3-1	S-I2-AR-3	Pasame el detalle de movimientos de la cuenta	I2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I2-AR-4-1	S-I2-AR-4	¿Cuándo fue mi última compra con la tarjeta?	I2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-MX-0-1	S-I3-MX-0	¿Por qué aparece pendiente este cargo?	I3	es	MX	team-generated	2026-10-W1	true	I2	double-labeled (disagreement)
+S-I3-MX-1-1	S-I3-MX-1	¿Qué pasó con el pago que hice ayer, no se ha reflejado?	I3	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-MX-2-1	S-I3-MX-2	Oye, ¿por qué me rechazaron esta compra?	I3	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-MX-3-1	S-I3-MX-3	¿Esta transacción ya se procesó o sigue en proceso?	I3	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-MX-4-1	S-I3-MX-4	¿Por qué me aparece un cobro duplicado?	I3	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-CO-0-1	S-I3-CO-0	¿Por qué este movimiento figura como pendiente?	I3	es	CO	team-generated	2026-10-W1	true	I3	double-labeled (agreement)
+S-I3-CO-1-1	S-I3-CO-1	¿Qué pasó con la transferencia de ayer que no aparece?	I3	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-CO-2-1	S-I3-CO-2	¿Por qué me declinaron esta compra?	I3	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-CO-3-1	S-I3-CO-3	¿Este pago ya quedó o todavía está en proceso?	I3	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-CO-4-1	S-I3-CO-4	¿Por qué me cobraron dos veces lo mismo?	I3	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-AR-0-1	S-I3-AR-0	¿Por qué este cargo quedó pendiente?	I3	es	AR	team-generated	2026-10-W1	true	I2	double-labeled (disagreement)
+S-I3-AR-1-1	S-I3-AR-1	¿Qué pasó con el pago de ayer que no se ve?	I3	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-AR-2-1	S-I3-AR-2	¿Por qué me rechazaron esta compra con la tarjeta?	I3	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-AR-3-1	S-I3-AR-3	¿Esta operación ya se acreditó o sigue en proceso?	I3	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I3-AR-4-1	S-I3-AR-4	¿Por qué me aparece el mismo cobro dos veces?	I3	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-MX-0-1	S-I4-MX-0	¿Cuál es el límite de mi tarjeta de crédito?	I4	es	MX	team-generated	2026-10-W1	true	I4	double-labeled (agreement)
+S-I4-MX-1-1	S-I4-MX-1	¿Mi tarjeta está activa o bloqueada?	I4	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-MX-2-1	S-I4-MX-2	¿Cuántos días llevo de atraso en el pago?	I4	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-MX-3-1	S-I4-MX-3	¿Cuál es el estado actual de mi tarjeta?	I4	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-MX-4-1	S-I4-MX-4	¿Cuándo vence mi tarjeta?	I4	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-CO-0-1	S-I4-CO-0	¿Cuál es el cupo de mi tarjeta de crédito?	I4	es	CO	team-generated	2026-10-W1	true	I4	double-labeled (agreement)
+S-I4-CO-1-1	S-I4-CO-1	¿Mi tarjeta está activa o está bloqueada?	I4	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-CO-2-1	S-I4-CO-2	¿Cuántos días de mora llevo?	I4	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-CO-3-1	S-I4-CO-3	¿En qué estado está mi tarjeta ahora?	I4	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-CO-4-1	S-I4-CO-4	¿Cuándo se vence mi tarjeta?	I4	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-AR-0-1	S-I4-AR-0	¿Cuál es el límite de mi tarjeta?	I4	es	AR	team-generated	2026-10-W1	true	I4	double-labeled (agreement)
+S-I4-AR-1-1	S-I4-AR-1	¿Mi tarjeta está activa o bloqueada?	I4	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-AR-2-1	S-I4-AR-2	¿Cuántos días de atraso tengo en el pago?	I4	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-AR-3-1	S-I4-AR-3	¿Qué estado tiene mi tarjeta en este momento?	I4	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I4-AR-4-1	S-I4-AR-4	¿Cuándo vence mi tarjeta?	I4	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-MX-0-1	S-I5-MX-0	¿A cuánto está el dólar hoy?	I5	es	MX	team-generated	2026-10-W1	true	I1	double-labeled (disagreement)
+S-I5-MX-1-1	S-I5-MX-1	¿Cuántos pesos son 100 dólares?	I5	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-MX-2-1	S-I5-MX-2	Quiero convertir 500 pesos a dólares	I5	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-MX-3-1	S-I5-MX-3	¿Cuál es el tipo de cambio de hoy para el euro?	I5	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-MX-4-1	S-I5-MX-4	¿Cuánto me dan por 300 dólares en pesos?	I5	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-CO-0-1	S-I5-CO-0	¿A cómo está el dólar hoy?	I5	es	CO	team-generated	2026-10-W1	true	I5	double-labeled (agreement)
+S-I5-CO-1-1	S-I5-CO-1	¿Cuántos pesos son 50 dólares?	I5	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-CO-2-1	S-I5-CO-2	Quiero pasar 200.000 pesos a dólares	I5	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-CO-3-1	S-I5-CO-3	¿Cuál es la tasa de cambio del euro hoy?	I5	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-CO-4-1	S-I5-CO-4	¿Cuánto me dan por 100 dólares en pesos?	I5	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-AR-0-1	S-I5-AR-0	¿A cuánto está el dólar hoy?	I5	es	AR	team-generated	2026-10-W1	true	I1	double-labeled (disagreement)
+S-I5-AR-1-1	S-I5-AR-1	¿Cuántos pesos son 100 dólares?	I5	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-AR-2-1	S-I5-AR-2	Quiero convertir 10.000 pesos a dólares	I5	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-AR-3-1	S-I5-AR-3	¿Cuál es la cotización del euro de hoy?	I5	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I5-AR-4-1	S-I5-AR-4	¿Cuánto me dan por 200 dólares en pesos?	I5	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-MX-0-1	S-I6-MX-0	¿Qué productos tengo contratados con el banco?	I6	es	MX	team-generated	2026-10-W1	true	I6	double-labeled (agreement)
+S-I6-MX-1-1	S-I6-MX-1	¿Cuáles son mis cuentas y tarjetas?	I6	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-MX-2-1	S-I6-MX-2	Quiero ver todos mis productos	I6	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-MX-3-1	S-I6-MX-3	¿Qué tarjetas tengo asociadas a mi cuenta?	I6	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-MX-4-1	S-I6-MX-4	Dame la lista de mis productos del banco	I6	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-CO-0-1	S-I6-CO-0	¿Qué productos tengo con el banco?	I6	es	CO	team-generated	2026-10-W1	true	I6	double-labeled (agreement)
+S-I6-CO-1-1	S-I6-CO-1	¿Cuáles son mis cuentas y tarjetas activas?	I6	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-CO-2-1	S-I6-CO-2	Quiero ver el listado de mis productos	I6	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-CO-3-1	S-I6-CO-3	¿Qué tarjetas tengo asociadas?	I6	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-CO-4-1	S-I6-CO-4	Deme el listado de todos mis productos	I6	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-AR-0-1	S-I6-AR-0	¿Qué productos tengo con el banco?	I6	es	AR	team-generated	2026-10-W1	true	I6	double-labeled (agreement)
+S-I6-AR-1-1	S-I6-AR-1	¿Cuáles son mis cuentas y tarjetas?	I6	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-AR-2-1	S-I6-AR-2	Quiero ver todos los productos que tengo	I6	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-AR-3-1	S-I6-AR-3	¿Qué tarjetas tengo asociadas a la cuenta?	I6	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-I6-AR-4-1	S-I6-AR-4	Pasame la lista de mis productos	I6	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-MX-0-1	S-A1-MX-0	Quiero bloquear mi tarjeta ahora mismo	A1	es	MX	team-generated	2026-10-W1	true	A2	double-labeled (disagreement)
+S-A1-MX-1-1	S-A1-MX-1	Por favor congela mi tarjeta de crédito	A1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-MX-2-1	S-A1-MX-2	Necesito desactivar mi tarjeta temporalmente	A1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-MX-3-1	S-A1-MX-3	Bloquea mi tarjeta, creo que la perdí	A1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-MX-4-1	S-A1-MX-4	Suspende mi tarjeta mientras la encuentro	A1	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-CO-0-1	S-A1-CO-0	Quiero bloquear mi tarjeta ya	A1	es	CO	team-generated	2026-10-W1	true	A1	double-labeled (agreement)
+S-A1-CO-1-1	S-A1-CO-1	Por favor congele mi tarjeta de crédito	A1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-CO-2-1	S-A1-CO-2	Necesito inactivar mi tarjeta por un momento	A1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-CO-3-1	S-A1-CO-3	Bloquee mi tarjeta, creo que la perdí	A1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-CO-4-1	S-A1-CO-4	Suspenda mi tarjeta mientras la busco	A1	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-AR-0-1	S-A1-AR-0	Quiero bloquear la tarjeta ahora	A1	es	AR	team-generated	2026-10-W1	true	A2	double-labeled (disagreement)
+S-A1-AR-1-1	S-A1-AR-1	Por favor congelá mi tarjeta de crédito	A1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-AR-2-1	S-A1-AR-2	Necesito desactivar la tarjeta un rato	A1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-AR-3-1	S-A1-AR-3	Bloqueá mi tarjeta, me parece que la perdí	A1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A1-AR-4-1	S-A1-AR-4	Suspendé la tarjeta mientras la encuentro	A1	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-MX-0-1	S-A2-MX-0	Quiero desbloquear mi tarjeta	A2	es	MX	team-generated	2026-10-W1	true	A2	double-labeled (agreement)
+S-A2-MX-1-1	S-A2-MX-1	Ya apareció mi tarjeta, actívala de nuevo por favor	A2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-MX-2-1	S-A2-MX-2	Reactiva mi tarjeta de crédito	A2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-MX-3-1	S-A2-MX-3	Descongela mi tarjeta, la quiero usar otra vez	A2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-MX-4-1	S-A2-MX-4	Habilita de nuevo mi tarjeta por favor	A2	es	MX	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-CO-0-1	S-A2-CO-0	Quiero desbloquear mi tarjeta	A2	es	CO	team-generated	2026-10-W1	true	A2	double-labeled (agreement)
+S-A2-CO-1-1	S-A2-CO-1	Ya apareció la tarjeta, actívela de nuevo	A2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-CO-2-1	S-A2-CO-2	Reactive mi tarjeta de crédito por favor	A2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-CO-3-1	S-A2-CO-3	Descongele mi tarjeta, la necesito usar	A2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-CO-4-1	S-A2-CO-4	Habilite otra vez mi tarjeta	A2	es	CO	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-AR-0-1	S-A2-AR-0	Quiero desbloquear la tarjeta	A2	es	AR	team-generated	2026-10-W1	true	A2	double-labeled (agreement)
+S-A2-AR-1-1	S-A2-AR-1	Apareció la tarjeta, activala de nuevo	A2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-AR-2-1	S-A2-AR-2	Reactivá mi tarjeta de crédito	A2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-AR-3-1	S-A2-AR-3	Descongelá la tarjeta, la quiero volver a usar	A2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-A2-AR-4-1	S-A2-AR-4	Habilitá de nuevo mi tarjeta por favor	A2	es	AR	team-generated	2026-10-W1	false		team-authored ES anchor
+S-E1-MX-0-1	S-E1-MX-0	Hay un cargo que yo no hice en mi tarjeta	E1	es	MX	team-generated	2026-10-W2	true	E3	double-labeled (disagreement)
+S-E1-MX-1-1	S-E1-MX-1	No reconozco esta compra, quiero disputarla	E1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-MX-2-1	S-E1-MX-2	Me cobraron algo que no compré, ¿cómo lo reclamo?	E1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-MX-3-1	S-E1-MX-3	Quiero reportar un movimiento que no reconozco	E1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-MX-4-1	S-E1-MX-4	Aparece una compra que no es mía, quiero reclamar	E1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-CO-0-1	S-E1-CO-0	Hay un cobro que yo no realicé	E1	es	CO	team-generated	2026-10-W2	true	E1	double-labeled (agreement)
+S-E1-CO-1-1	S-E1-CO-1	No reconozco esta compra, la quiero reclamar	E1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-CO-2-1	S-E1-CO-2	Me cobraron algo que no compré, quiero disputarlo	E1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-CO-3-1	S-E1-CO-3	Quiero reportar un movimiento desconocido en la cuenta	E1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-CO-4-1	S-E1-CO-4	Figura una compra que yo no hice, la quiero reclamar	E1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-AR-0-1	S-E1-AR-0	Hay un cargo que yo no hice en la tarjeta	E1	es	AR	team-generated	2026-10-W2	true	E3	double-labeled (disagreement)
+S-E1-AR-1-1	S-E1-AR-1	No reconozco esta compra, la quiero desconocer	E1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-AR-2-1	S-E1-AR-2	Me cobraron algo que no compré, ¿cómo lo reclamo?	E1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-AR-3-1	S-E1-AR-3	Quiero reportar un movimiento que no reconozco	E1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E1-AR-4-1	S-E1-AR-4	Aparece un consumo que no es mío, lo quiero reclamar	E1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-MX-0-1	S-E2-MX-0	Quiero poner una queja por el pésimo servicio	E2	es	MX	team-generated	2026-10-W2	true	E2	double-labeled (agreement)
+S-E2-MX-1-1	S-E2-MX-1	Estoy muy molesto, llevo días esperando una respuesta	E2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-MX-2-1	S-E2-MX-2	Deseo presentar una reclamación formal	E2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-MX-3-1	S-E2-MX-3	El trato en la sucursal fue malísimo, quiero quejarme	E2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-MX-4-1	S-E2-MX-4	Quiero dejar una queja, nadie me resuelve nada	E2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-CO-0-1	S-E2-CO-0	Quiero poner una queja por el mal servicio	E2	es	CO	team-generated	2026-10-W2	true	E2	double-labeled (agreement)
+S-E2-CO-1-1	S-E2-CO-1	Estoy muy molesto, llevo días sin respuesta	E2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-CO-2-1	S-E2-CO-2	Deseo presentar un reclamo formal	E2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-CO-3-1	S-E2-CO-3	La atención en la oficina fue pésima, me quiero quejar	E2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-CO-4-1	S-E2-CO-4	Quiero dejar una queja, nadie me soluciona nada	E2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-AR-0-1	S-E2-AR-0	Quiero hacer un reclamo por el pésimo servicio	E2	es	AR	team-generated	2026-10-W2	true	E2	double-labeled (agreement)
+S-E2-AR-1-1	S-E2-AR-1	Estoy muy enojado, hace días que espero respuesta	E2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-AR-2-1	S-E2-AR-2	Quiero presentar una queja formal	E2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-AR-3-1	S-E2-AR-3	La atención en la sucursal fue malísima, me quiero quejar	E2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E2-AR-4-1	S-E2-AR-4	Quiero dejar un reclamo, nadie me resuelve nada	E2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-MX-0-1	S-E3-MX-0	Creo que me están haciendo un fraude en la cuenta	E3	es	MX	team-generated	2026-10-W2	true	E3	double-labeled (agreement)
+S-E3-MX-1-1	S-E3-MX-1	Alguien usó mi tarjeta sin permiso, es un fraude	E3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-MX-2-1	S-E3-MX-2	Vi movimientos raros, parece que me hackearon	E3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-MX-3-1	S-E3-MX-3	Sospecho que clonaron mi tarjeta	E3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-MX-4-1	S-E3-MX-4	Me llegó un cargo de otro país que no hice, es fraude	E3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-CO-0-1	S-E3-CO-0	Creo que me están haciendo un fraude	E3	es	CO	team-generated	2026-10-W2	true	E3	double-labeled (agreement)
+S-E3-CO-1-1	S-E3-CO-1	Alguien usó mi tarjeta sin autorización, es fraude	E3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-CO-2-1	S-E3-CO-2	Vi movimientos extraños, parece que me robaron los datos	E3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-CO-3-1	S-E3-CO-3	Sospecho que me clonaron la tarjeta	E3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-CO-4-1	S-E3-CO-4	Me aparece un cobro del exterior que no hice, es fraude	E3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-AR-0-1	S-E3-AR-0	Creo que me están haciendo un fraude en la cuenta	E3	es	AR	team-generated	2026-10-W2	true	E3	double-labeled (agreement)
+S-E3-AR-1-1	S-E3-AR-1	Alguien usó mi tarjeta sin permiso, es un fraude	E3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-AR-2-1	S-E3-AR-2	Vi movimientos raros, parece que me hackearon la cuenta	E3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-AR-3-1	S-E3-AR-3	Sospecho que me clonaron la tarjeta	E3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E3-AR-4-1	S-E3-AR-4	Me llegó un cargo del exterior que no hice, es fraude	E3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-MX-0-1	S-E4-MX-0	Quiero hablar con una persona, no con un bot	E4	es	MX	team-generated	2026-10-W2	true	E4	double-labeled (agreement)
+S-E4-MX-1-1	S-E4-MX-1	Pásame con un agente humano por favor	E4	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-MX-2-1	S-E4-MX-2	Esto no me sirve, necesito que me atienda alguien real	E4	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-MX-3-1	S-E4-MX-3	¿Me puedes transferir con un asesor?	E4	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-MX-4-1	S-E4-MX-4	Ya intenté varias veces y no funciona, pásame con alguien	E4	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-CO-0-1	S-E4-CO-0	Quiero hablar con una persona, no con un bot	E4	es	CO	team-generated	2026-10-W2	true	E4	double-labeled (agreement)
+S-E4-CO-1-1	S-E4-CO-1	Páseme con un asesor humano por favor	E4	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-CO-2-1	S-E4-CO-2	Esto no me funciona, necesito que me atienda alguien de verdad	E4	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-CO-3-1	S-E4-CO-3	¿Me puede comunicar con un agente?	E4	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-CO-4-1	S-E4-CO-4	Ya intenté varias veces y nada, páseme con alguien	E4	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-AR-0-1	S-E4-AR-0	Quiero hablar con una persona, no con un bot	E4	es	AR	team-generated	2026-10-W2	true	E4	double-labeled (agreement)
+S-E4-AR-1-1	S-E4-AR-1	Pasame con un agente humano por favor	E4	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-AR-2-1	S-E4-AR-2	Esto no me sirve, necesito que me atienda alguien real	E4	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-AR-3-1	S-E4-AR-3	¿Me podés transferir con un asesor?	E4	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-E4-AR-4-1	S-E4-AR-4	Ya probé varias veces y no anda, pasame con alguien	E4	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-MX-0-1	S-X1-MX-0	Quiero que me suban el límite de mi tarjeta	X1	es	MX	team-generated	2026-10-W2	true	X1	double-labeled (agreement)
+S-X1-MX-1-1	S-X1-MX-1	¿Califico para un préstamo personal?	X1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-MX-2-1	S-X1-MX-2	Necesito que me aumenten la línea de crédito	X1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-MX-3-1	S-X1-MX-3	¿Me pueden dar un crédito automotriz?	X1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-MX-4-1	S-X1-MX-4	¿Soy elegible para una hipoteca?	X1	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-CO-0-1	S-X1-CO-0	Quiero que me suban el cupo de la tarjeta	X1	es	CO	team-generated	2026-10-W2	true	X1	double-labeled (agreement)
+S-X1-CO-1-1	S-X1-CO-1	¿Califico para un crédito de libre inversión?	X1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-CO-2-1	S-X1-CO-2	Necesito que me aumenten la línea de crédito	X1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-CO-3-1	S-X1-CO-3	¿Me pueden aprobar un préstamo?	X1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-CO-4-1	S-X1-CO-4	¿Soy elegible para un crédito hipotecario?	X1	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-AR-0-1	S-X1-AR-0	Quiero que me suban el límite de la tarjeta	X1	es	AR	team-generated	2026-10-W2	true	X1	double-labeled (agreement)
+S-X1-AR-1-1	S-X1-AR-1	¿Califico para un préstamo personal?	X1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-AR-2-1	S-X1-AR-2	Necesito que me aumenten la línea de crédito	X1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-AR-3-1	S-X1-AR-3	¿Me pueden dar un crédito?	X1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X1-AR-4-1	S-X1-AR-4	¿Soy elegible para un crédito hipotecario?	X1	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-MX-0-1	S-X2-MX-0	Transfiere 2000 pesos a la cuenta de mi hermano	X2	es	MX	team-generated	2026-10-W2	true	X2	double-labeled (agreement)
+S-X2-MX-1-1	S-X2-MX-1	Quiero pagar mi tarjeta desde mi cuenta	X2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-MX-2-1	S-X2-MX-2	Hazme un envío de dinero a este número de cuenta	X2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-MX-3-1	S-X2-MX-3	Paga mi recibo de luz desde mi saldo	X2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-MX-4-1	S-X2-MX-4	Manda 1000 pesos a esta cuenta por favor	X2	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-CO-0-1	S-X2-CO-0	Transfiera 500.000 pesos a la cuenta de mi mamá	X2	es	CO	team-generated	2026-10-W2	true	X2	double-labeled (agreement)
+S-X2-CO-1-1	S-X2-CO-1	Quiero pagar la tarjeta desde mi cuenta	X2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-CO-2-1	S-X2-CO-2	Hágame una transferencia a esta cuenta	X2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-CO-3-1	S-X2-CO-3	Pague mi factura de servicios desde mi saldo	X2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-CO-4-1	S-X2-CO-4	Mándeme 100.000 pesos a esta cuenta	X2	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-AR-0-1	S-X2-AR-0	Transferí 5000 pesos a la cuenta de mi hermano	X2	es	AR	team-generated	2026-10-W2	true	X2	double-labeled (agreement)
+S-X2-AR-1-1	S-X2-AR-1	Quiero pagar la tarjeta desde mi cuenta	X2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-AR-2-1	S-X2-AR-2	Haceme un envío de dinero a esta cuenta	X2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-AR-3-1	S-X2-AR-3	Pagá mi factura de luz desde mi saldo	X2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X2-AR-4-1	S-X2-AR-4	Mandá 2000 pesos a esta cuenta por favor	X2	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-MX-0-1	S-X3-MX-0	¿Dónde queda la sucursal más cercana?	X3	es	MX	team-generated	2026-10-W2	true	I6	double-labeled (disagreement)
+S-X3-MX-1-1	S-X3-MX-1	¿Cuál es el horario de atención del banco?	X3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-MX-2-1	S-X3-MX-2	¿Cómo abro una cuenta nueva?	X3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-MX-3-1	S-X3-MX-3	¿Tienen una app para el celular?	X3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-MX-4-1	S-X3-MX-4	¿Cómo cambio mi contraseña de la app?	X3	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-CO-0-1	S-X3-CO-0	¿Dónde queda la oficina más cercana?	X3	es	CO	team-generated	2026-10-W2	true	X3	double-labeled (agreement)
+S-X3-CO-1-1	S-X3-CO-1	¿Cuál es el horario de atención?	X3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-CO-2-1	S-X3-CO-2	¿Cómo abro una cuenta nueva?	X3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-CO-3-1	S-X3-CO-3	¿Tienen aplicación para el celular?	X3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-CO-4-1	S-X3-CO-4	¿Cómo cambio la clave de la aplicación?	X3	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-AR-0-1	S-X3-AR-0	¿Dónde queda la sucursal más cercana?	X3	es	AR	team-generated	2026-10-W2	true	I6	double-labeled (disagreement)
+S-X3-AR-1-1	S-X3-AR-1	¿Cuál es el horario de atención del banco?	X3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-AR-2-1	S-X3-AR-2	¿Cómo abro una cuenta nueva?	X3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-AR-3-1	S-X3-AR-3	¿Tienen una app para el celular?	X3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-X3-AR-4-1	S-X3-AR-4	¿Cómo cambio la contraseña de la app?	X3	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-MX-0-1	S-OTHER-MX-0	Hola, ¿cómo estás?	OTHER	es	MX	team-generated	2026-10-W2	true	OTHER	double-labeled (agreement)
+S-OTHER-MX-1-1	S-OTHER-MX-1	Gracias, muy amable	OTHER	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-MX-2-1	S-OTHER-MX-2	¿Qué tiempo hace hoy?	OTHER	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-MX-3-1	S-OTHER-MX-3	jajaja ok	OTHER	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-MX-4-1	S-OTHER-MX-4	asdf qwerty	OTHER	es	MX	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-CO-0-1	S-OTHER-CO-0	Hola, buenos días	OTHER	es	CO	team-generated	2026-10-W2	true	OTHER	double-labeled (agreement)
+S-OTHER-CO-1-1	S-OTHER-CO-1	Muchas gracias, muy amable	OTHER	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-CO-2-1	S-OTHER-CO-2	¿Cómo le va?	OTHER	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-CO-3-1	S-OTHER-CO-3	listo, chao	OTHER	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-CO-4-1	S-OTHER-CO-4	mmm no sé	OTHER	es	CO	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-AR-0-1	S-OTHER-AR-0	Hola, ¿qué tal?	OTHER	es	AR	team-generated	2026-10-W2	true	OTHER	double-labeled (agreement)
+S-OTHER-AR-1-1	S-OTHER-AR-1	Gracias, muy amable	OTHER	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-AR-2-1	S-OTHER-AR-2	¿Cómo andás?	OTHER	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-AR-3-1	S-OTHER-AR-3	dale, listo	OTHER	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor
+S-OTHER-AR-4-1	S-OTHER-AR-4	xd no entiendo nada	OTHER	es	AR	team-generated	2026-10-W2	false		team-authored ES anchor

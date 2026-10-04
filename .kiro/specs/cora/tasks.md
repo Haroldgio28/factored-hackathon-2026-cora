@@ -99,8 +99,9 @@ Rules for every task:
 
 ## Phase 3 - NLU & learned component (Days 4-6)
 
-- [ ] **3.1 Labeling guide & gold set**
+- [x] **3.1 Labeling guide & gold set**
   - `documentation/LABELING_GUIDE.md`; **team-written** labeled utterances (es MX/CO/AR + pt) - dataset transcripts are templated and only seed examples (EDA F7); provenance column; double-label 20% and report κ.
+  - Done: `src/cora/nlu/labels.py` (re-exports policy `Intent`; `Provenance`/`Variant` StrEnums), `src/cora/nlu/goldset.py` (fail-closed TSV loader + Cohen's κ via a direct counting formula, no ML dep yet), `data/nlu/gold.tsv` (240 team-generated ES rows, 15/class balanced across all 16 classes, MX/CO/AR, authoring-wave `month`, `scenario_id` grouping) authored by `data/nlu/build_gold.py`, and `documentation/LABELING_GUIDE.md` (per-class guidance + anchors + provenance scheme + double-label protocol). 48 rows double-labeled (20.0%), **Cohen's κ = 0.733**. Evidence: `tests/unit/test_goldset.py` (real-file balance/κ + 11 fail-closed cases). `ruff` clean; `uv run pytest` green.
   - _Requirements: REQ-30, REQ-37_
 - [ ] **3.2 Portuguese set**
   - ES->PT translation of the gold set (marked TRANSLATED) + native-style rewrites of 20%; reviewer notes; documented limitation.
