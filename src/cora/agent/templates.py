@@ -24,8 +24,15 @@ from __future__ import annotations
 from enum import StrEnum
 
 from cora.policy import Decision
+from cora.tools.confirmations import CardAction
 
-__all__ = ["Outcome", "SUPPORTED_LANGUAGES", "missing_translations", "render_template"]
+__all__ = [
+    "Outcome",
+    "SUPPORTED_LANGUAGES",
+    "action_verb",
+    "missing_translations",
+    "render_template",
+]
 
 # The two customer-facing languages the product ships (language steering). A missing translation
 # for either, for any outcome, must fail a test.
@@ -49,6 +56,11 @@ class Outcome(StrEnum):
     REFUSE = "refuse"
     REAUTH = "reauth"
     TOOL_UNAVAILABLE = "tool_unavailable"
+    # The verified outcome of a confirmed card action (task 4.4): reported ONLY after the tool's
+    # read-back confirms the post-condition (REQ-09), and the cancelled path when the customer did
+    # not give an explicit affirmative (REQ-14). Both are grounded, figure-free copy.
+    ACTION_DONE = "action_done"
+    ACTION_CANCELLED = "action_cancelled"
 
     @classmethod
     def from_decision(cls, decision: Decision) -> Outcome:
@@ -129,6 +141,19 @@ _TEMPLATES: dict[tuple[Outcome, str], str] = {
         "Por segurança, preciso verificar a sua identidade novamente antes de continuar. "
         "Podemos validar o seu acesso outra vez?"
     ),
+    # ACTION_DONE — a confirmed card action verified by read-back (REQ-09). No figure of its own;
+    # the verb/target were restated in the preceding CONFIRM turn.
+    (Outcome.ACTION_DONE, "es"): ("Listo, ya apliqué el cambio en tu tarjeta y lo verifiqué. ¿Algo más?"),
+    (Outcome.ACTION_DONE, "pt"): (
+        "Pronto, apliquei a alteração no seu cartão e verifiquei. Mais alguma coisa?"
+    ),
+    # ACTION_CANCELLED — no explicit affirmative, so nothing was executed (REQ-14).
+    (Outcome.ACTION_CANCELLED, "es"): (
+        "De acuerdo, no realicé ningún cambio en tu tarjeta. ¿Hay algo más en lo que pueda ayudarte?"
+    ),
+    (Outcome.ACTION_CANCELLED, "pt"): (
+        "Certo, não fiz nenhuma alteração no seu cartão. Posso ajudar com mais alguma coisa?"
+    ),
     # TOOL_UNAVAILABLE — a tool did not answer; be honest, never guess a value (REQ-40).
     (Outcome.TOOL_UNAVAILABLE, "es"): (
         "En este momento no puedo obtener esa información. "
@@ -169,10 +194,28 @@ def render_template(outcome: Outcome, lang: str, **fields: str) -> str:
     return template.format(**fields)
 
 
+# The infinitive verb that fills the CONFIRM restatement ("voy a {action} la tarjeta ..."), per
+# action and language. Kept here with the rest of the customer-facing copy so a missing es/pt verb
+# is as visible as a missing template. es and pt happen to share the spelling for both actions.
+_ACTION_VERBS: dict[tuple[CardAction, str], str] = {
+    (CardAction.FREEZE, "es"): "congelar",
+    (CardAction.FREEZE, "pt"): "congelar",
+    (CardAction.UNFREEZE, "es"): "descongelar",
+    (CardAction.UNFREEZE, "pt"): "descongelar",
+}
+
+
+def action_verb(action: CardAction, lang: str) -> str:
+    """The localized infinitive for a card action, used in the CONFIRM restatement (`es` fallback)."""
+    return _ACTION_VERBS[(action, lang if lang in SUPPORTED_LANGUAGES else "es")]
+
+
 if __name__ == "__main__":  # self-check: table is complete and renders without inventing figures
     assert not missing_translations(), f"missing templates: {missing_translations()}"
     assert set(Outcome) >= {Outcome.from_decision(d) for d in Decision}, "a Decision has no Outcome"
-    msg = render_template(Outcome.CONFIRM, "es", action="congelar", product_number_masked="****1234")
-    assert "****1234" in msg and "{" not in msg
+    msg = render_template(
+        Outcome.CONFIRM, "es", action=action_verb(CardAction.FREEZE, "es"), product_number_masked="****1234"
+    )
+    assert "****1234" in msg and "congelar" in msg and "{" not in msg
     assert render_template(Outcome.REFUSE, "pt").strip()  # no placeholders, still renders
     print("templates self-check OK")

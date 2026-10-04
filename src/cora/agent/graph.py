@@ -42,11 +42,16 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from cora.agent.confirmation import (
+    ConfirmationOutcome,
+    request_confirmation,
+    resolve_confirmation,
+)
 from cora.agent.generator import GeneratedResponse, generate
 from cora.agent.llm import LLMClient
 from cora.agent.references import Reference, resolve_reference
 from cora.agent.state import SessionState, SessionStore
-from cora.agent.templates import Outcome
+from cora.agent.templates import Outcome, action_verb
 from cora.identity import Session
 from cora.nlu import entities as nlu_entities
 from cora.nlu import injection, language
@@ -60,6 +65,7 @@ from cora.policy import (
 )
 from cora.tools import Status, ToolLayer
 from cora.tools.base import mask_pii
+from cora.tools.confirmations import CardAction
 from cora.tools.models import GetBalanceInput, GetCardDetailsInput
 
 logger = logging.getLogger("cora.agent.graph")
@@ -174,6 +180,13 @@ class Orchestrator:
 
         state = self._store.require(session)
 
+        # 1b. Confirm -> Execute -> Verify (task 4.4): while a confirmation is open, THIS turn is
+        #     the customer's yes/no. Resolve it deterministically (never the LLM) and execute only
+        #     on an explicit affirmative; the policy engine is not consulted for a reply.
+        if state.pending_action is not None:
+            masked = mask_pii(utterance)
+            return self._resolve_pending(session, state, masked)
+
         # 2. Language: detect on the raw text, but never let a low-confidence guess flip the
         #    session language (keep it; the generator confirms). Empty/low-confidence -> keep.
         lang = language.detect(utterance)
@@ -206,6 +219,14 @@ class Orchestrator:
         result.intent = intent
         result.reference = reference
         result.proposal_rejected = decision.proposal_rejected
+
+        # A CONFIRM decision opens the Confirm->Execute->Verify protocol (task 4.4): restate the
+        # exact action + MASKED product number and open the pending confirmation. The restatement
+        # text and the pending both come from facts resolved above (never the model).
+        if decision.decision is Decision.CONFIRM and intent is not None:
+            product_id = reference.product_id or state.referenced_product_id
+            if product_id is not None:
+                self._open_confirmation(state, result, tools, intent, product_id)
 
         # Record the (masked) turn and reset the clarification counter on any non-clarify outcome.
         state.record_turn(masked, intent.value if intent else None, decision.decision.value)
@@ -342,8 +363,66 @@ class Orchestrator:
         return result
 
     def _node_confirm(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
-        """`Decide -> Confirm` (POL-080): restate + await explicit yes (protocol in 4.4)."""
+        """`Decide -> Confirm` (POL-080): the restatement + pending are opened by `step` (4.4)."""
         return _from_decision("Confirm", decision)
+
+    # -- Confirm -> Execute -> Verify protocol (task 4.4, REQ-09/REQ-14) ----------------
+
+    def _open_confirmation(
+        self,
+        state: SessionState,
+        result: TurnResult,
+        tools: ToolLayer,
+        intent: Intent,
+        product_id: str,
+    ) -> None:
+        """Open the pending confirmation and render the restatement (exact action + masked number).
+
+        The masked number comes from the card-details tool (never the model), so the restatement
+        shows the customer the same `****1234` the overlay will act on. If the tool cannot supply
+        it the turn fails closed to the tool-unavailable copy rather than restating a blank card.
+        """
+        action = CardAction.FREEZE if intent is Intent.A1 else CardAction.UNFREEZE
+        details = tools.get_card_details(GetCardDetailsInput(product_id=product_id))
+        masked_number = details.data.product_number_masked if details.data is not None else None
+        if details.status is not Status.OK or not masked_number:
+            result.response = self._render(state, Outcome.TOOL_UNAVAILABLE)
+            return
+        request_confirmation(state, action, product_id, masked_number)
+        result.response = self._render(
+            state,
+            Outcome.CONFIRM,
+            action=action_verb(action, state.language),
+            product_number_masked=masked_number,
+        )
+
+    def _resolve_pending(self, session: Session, state: SessionState, masked: str) -> TurnResult:
+        """Execute+verify an open confirmation on the customer's reply (task 4.4, REQ-09/REQ-14).
+
+        Deterministic end to end: `resolve_confirmation` classifies the yes/no (never the LLM),
+        executes only on an explicit affirmative, and reports success only from the tool's verified
+        OK read-back. Negative/ambiguous -> cancelled (nothing executed); a non-verifying tool ->
+        not completed + escalate (offer a human). The pending is single-use (cleared on resolve).
+        """
+        tools = self._tool_layer_factory(session)
+        outcome, _result = resolve_confirmation(state, masked, tools, now=self._clock())
+        if outcome is ConfirmationOutcome.EXECUTED_OK:
+            node = "Verify"
+            response = self._render(state, Outcome.ACTION_DONE)
+        elif outcome is ConfirmationOutcome.CANCELLED:
+            node = "Verify"
+            response = self._render(state, Outcome.ACTION_CANCELLED)
+        else:  # NOT_COMPLETED: the tool did not verify -> offer a human (REQ-09)
+            node = "Escalate"
+            response = self._render(state, Outcome.ESCALATE)
+        turn = TurnResult(
+            node=node,
+            message=f"confirmation resolved: {outcome.name}",
+            response=response,
+            spans=[TraceSpan(node="Execute", detail=outcome.name), TraceSpan(node=node)],
+        )
+        state.record_turn(masked, None, None)
+        return turn
 
     def _node_escalate(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide/Verify/Clarify -> Escalate`: build the handoff package next (4.5)."""

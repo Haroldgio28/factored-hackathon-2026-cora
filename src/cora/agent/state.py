@@ -26,8 +26,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from cora.identity import Session
+
+if TYPE_CHECKING:
+    from cora.agent.confirmation import PendingConfirmation
 
 __all__ = ["SessionState", "SessionStore", "TurnRecord"]
 
@@ -73,6 +77,9 @@ class SessionState:
     last_listed_transaction_ids: list[str] = field(default_factory=list)
     # A confirmation awaiting the customer's explicit yes/no (the full protocol is task 4.4).
     pending_confirmation_id: str | None = None
+    # The exact action+product restated to the customer, awaiting their explicit affirmative
+    # (task 4.4). `None` whenever no confirmation is open; cleared on resolve/cancel/expiry.
+    pending_action: PendingConfirmation | None = None
     # Open clarification slots the machine is waiting on (design section 4 "open slots").
     open_slots: list[str] = field(default_factory=list)
     # Count of consecutive failed clarifications; 2 -> escalate (E4) per REQ-07.
@@ -99,6 +106,7 @@ class SessionState:
 
     def clear_pending_confirmation(self) -> None:
         self.pending_confirmation_id = None
+        self.pending_action = None
 
 
 class SessionStore:
