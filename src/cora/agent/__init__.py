@@ -9,6 +9,7 @@ per-session memory and `resolve_reference` resolves cross-turn references determ
 
 from __future__ import annotations
 
+from cora.agent.generator import GeneratedResponse, generate
 from cora.agent.graph import Node, Orchestrator, TraceSpan, TurnResult
 from cora.agent.llm import (
     BedrockLLMClient,
@@ -19,13 +20,16 @@ from cora.agent.llm import (
 )
 from cora.agent.references import Reference, ReferenceKind, resolve_reference
 from cora.agent.state import SessionState, SessionStore, TurnRecord
+from cora.agent.templates import Outcome, missing_translations, render_template
 
 __all__ = [
     "BedrockLLMClient",
+    "GeneratedResponse",
     "LLMClient",
     "LLMUnavailable",
     "Node",
     "Orchestrator",
+    "Outcome",
     "Reference",
     "ReferenceKind",
     "SessionState",
@@ -34,6 +38,9 @@ __all__ = [
     "TraceSpan",
     "TurnRecord",
     "TurnResult",
+    "generate",
     "get_llm_client",
+    "missing_translations",
+    "render_template",
     "resolve_reference",
 ]

@@ -42,9 +42,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from cora.agent.generator import GeneratedResponse, generate
 from cora.agent.llm import LLMClient
 from cora.agent.references import Reference, resolve_reference
 from cora.agent.state import SessionState, SessionStore
+from cora.agent.templates import Outcome
 from cora.identity import Session
 from cora.nlu import entities as nlu_entities
 from cora.nlu import injection, language
@@ -118,6 +120,9 @@ class TurnResult:
     reference: Reference | None = None
     proposal_rejected: bool = False
     message: str | None = None
+    # The rendered customer-facing response (task 4.2). `None` on nodes whose text another
+    # subtask fills (e.g. Answer needs the read tool's facts, Confirm the 4.4 restatement).
+    response: GeneratedResponse | None = None
     spans: list[TraceSpan] = field(default_factory=list)
 
 
@@ -291,13 +296,30 @@ class Orchestrator:
         """`Expired -> Unauthenticated`: state already discarded; force re-auth, disclose nothing."""
         return _single("Unauthenticated", detail="session expired; state discarded, re-auth required")
 
+    def _render(self, state: SessionState, outcome: Outcome, **fields: str) -> GeneratedResponse:
+        """Render the customer-facing response for `outcome` in the session language (task 4.2).
+
+        Deterministic template first, LLM polish via the orchestrator's client when configured;
+        fails closed to the template on any LLM error (REQ-40). Figures come only from `fields`,
+        which the node fills from tool facts - the model never originates a value.
+        """
+        return generate(outcome, state.language, fields=fields, client=self._llm)
+
     def _node_reauth(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """POL-000: the session is not valid for this turn -> re-authenticate (fail closed)."""
         state.clear_pending_confirmation()
-        return _from_decision("Unauthenticated", decision)
+        result = _from_decision("Unauthenticated", decision)
+        # Re-auth copy carries nothing sensitive and must not be reworded into a disclosure, so
+        # skip the LLM and return the deterministic template verbatim.
+        result.response = generate(Outcome.REAUTH, state.language, polish=False)
+        return result
 
     def _node_answer(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
-        """`Decide -> Answer` (POL-090): render from tool facts (4.2). Returns to Authenticated."""
+        """`Decide -> Answer` (POL-090): render from tool facts (4.2). Returns to Authenticated.
+
+        The grounded `facts` string is assembled from the read tool's `Result` by the read
+        subtask; until it is wired the node lands with no `response` (never a guessed answer).
+        """
         return _from_decision("Answer", decision)
 
     def _node_clarify(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
@@ -313,8 +335,11 @@ class Orchestrator:
             result = _node_handoff(self, state, decision)
             result.decision = Decision.ESCALATE
             result.message = "E4: 2 failed clarifications"
+            result.response = self._render(state, Outcome.ESCALATE)
             return result
-        return _from_decision("Clarify", decision)
+        result = _from_decision("Clarify", decision)
+        result.response = self._render(state, Outcome.CLARIFY)
+        return result
 
     def _node_confirm(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide -> Confirm` (POL-080): restate + await explicit yes (protocol in 4.4)."""
@@ -325,12 +350,21 @@ class Orchestrator:
         return _node_handoff(self, state, decision)
 
     def _node_abstain(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
-        """`Decide -> Abstain` (POL-010/030/999): disclose nothing / route out of scope (4.6)."""
-        return _from_decision("Abstain", decision)
+        """`Decide -> Abstain` (POL-010/030/999): disclose nothing / route out of scope (4.6).
+
+        The decision distinguishes a plain abstain (disclose nothing, offer a human) from an
+        `abstain_route` (credit out of scope, POL-030/REQ-33 -> route to a human); the outcome
+        maps 1:1 so the right es/pt copy is rendered.
+        """
+        result = _from_decision("Abstain", decision)
+        result.response = self._render(state, Outcome.from_decision(decision.decision))
+        return result
 
     def _node_refuse(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide -> Abstain` for a refuse decision (POL-020 money movement, 4.6)."""
-        return _from_decision("Abstain", decision)
+        result = _from_decision("Abstain", decision)
+        result.response = self._render(state, Outcome.REFUSE)
+        return result
 
 
 # -- module-level node helpers (keep the Orchestrator surface small) -----------------------
@@ -341,6 +375,7 @@ def _node_handoff(orch: Orchestrator, state: SessionState, decision: PolicyDecis
     result = _from_decision("Escalate", decision)
     result.spans.append(TraceSpan(node="Handoff", decision=decision.decision.value, rule_id=decision.rule_id))
     result.node = "Handoff"
+    result.response = orch._render(state, Outcome.ESCALATE)
     return result
 
 
