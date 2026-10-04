@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     # `<trace_dir>/traces.jsonl`; the dir lives under the gitignored `data/_state/` runtime area.
     trace_dir: Path = Field(DEFAULT_TRACE_DIR, alias="CORA_TRACE_DIR")
 
+    # Customer Streamlit UI (task 5.4, REQ-05). Base URL of the FastAPI service the UI calls over
+    # stdlib urllib; not a secret, so a real local default ships here. Point it at the deployed
+    # service URL on AWS.
+    api_base_url: str = Field("http://127.0.0.1:8000", alias="CORA_API_BASE_URL")
+
     # Organizer datathon bucket (read-only profile configured outside the repo)
     datathon_profile: str = Field("cora-datathon", alias="CORA_DATATHON_PROFILE")
     datathon_bucket: str = Field("", alias="CORA_DATATHON_BUCKET")
@@ -82,6 +87,12 @@ class Settings(BaseSettings):
     def _blank_trace_dir_is_default(cls, value: object) -> object:
         # `.env.example` ships `CORA_TRACE_DIR=` blank; fall back to the default runtime dir.
         return DEFAULT_TRACE_DIR if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("api_base_url", mode="before")
+    @classmethod
+    def _blank_api_base_url_is_default(cls, value: object) -> object:
+        # `.env.example` ships `CORA_API_BASE_URL=` blank; fall back to the local default.
+        return "http://127.0.0.1:8000" if isinstance(value, str) and not value.strip() else value
 
     @property
     def bedrock_configured(self) -> bool:
