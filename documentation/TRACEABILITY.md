@@ -37,7 +37,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-23 | Prioritize workflow; define outcomes | 01, 02 | 1.8, 7.3 | outcomes table | Partial |
 | SRC-24 | Conversational context | 06 | 4.1 | `src/cora/agent/state.py` (per-session store) + `src/cora/agent/references.py` (deterministic cross-turn resolution); `tests/unit/test_references.py`, `tests/unit/test_agent_graph.py` | Done |
 | SRC-25 | Clarify ambiguity | 07 | 4.1 | POL-070 clarify + two-strikes→escalate(E4) guard in `src/cora/agent/graph.py`; `tests/unit/test_agent_graph.py::test_low_confidence_clarifies_then_escalates_after_two` | Done |
-| SRC-26 | Grounded factual answers | 08, 28 | 4.3 | grounding tests | Planned |
+| SRC-26 | Grounded factual answers | 08, 28 | 4.3 | `src/cora/agent/grounding.py` (`check_grounding`: deterministic number/date/status diff vs the turn's tool `Result`s, es/pt+en number formats, fail-closed) wired into `src/cora/agent/generator.py` (ungrounded LLM polish discarded → grounded template, block decision is code's); `tests/unit/test_grounding.py` | Done |
 | SRC-27 | Use tools when they serve | 09 | 2.2, 4.4 | tool layer `tests/unit/test_tools.py` (2.2 done); agent-wired traces pending (4.4) | Partial |
 | SRC-28 | Report only verified actions | 09 | 2.3, 4.4 | `tests/unit/test_card_overlay.py` read-back + fail-closed (2.3 done); agent flow pending (4.4) | Partial |
 | SRC-29 | Define answerable requests | 04, 13 | 2.4 | `src/cora/policy/rules.yaml` + `tests/unit/test_policy.py` | Done |

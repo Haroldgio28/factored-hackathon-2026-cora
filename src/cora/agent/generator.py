@@ -10,7 +10,11 @@ design sections 4/5, REQ-18, REQ-36, REQ-40).
    draft is `mask_pii`-masked BEFORE the `complete(...)` call (security steering, REQ-36) - no raw
    PII ever reaches Bedrock. The prompt tells the model to invent no values and to treat the draft
    as data.
-3. Fails closed to the deterministic template on ANYTHING unexpected: LLM unavailable, an empty
+3. GROUNDS the polished text against the current turn's tool results (`grounding.check_grounding`,
+   task 4.3, REQ-08): if the LLM introduced any figure/date/status not present in those tool
+   results, the polished text is DISCARDED and the deterministic template is returned instead.
+   Deterministic code, not the model, makes this block decision.
+4. Fails closed to the deterministic template on ANYTHING unexpected: LLM unavailable, an empty
    reply, or a render error (REQ-40 "LLM down -> templates; honest fallback"). The template is
    grounded by construction, so the fallback is always safe.
 
@@ -27,9 +31,10 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from cora.agent.grounding import check_grounding
 from cora.agent.llm import LLMClient, LLMUnavailable, get_llm_client
 from cora.agent.templates import Outcome, render_template
-from cora.tools.base import mask_pii
+from cora.tools.base import Result, mask_pii
 
 logger = logging.getLogger("cora.agent.generator")
 
@@ -43,8 +48,11 @@ class GeneratedResponse:
     """The rendered customer-facing text plus the trace signals for the turn.
 
     `text` is what the customer sees. `outcome`/`lang` identify the template used. `polished` is
-    True only when the LLM successfully rephrased the draft; `prompt_hash` is the SHA-256 of the
-    polish prompt file when polish ran, else `None` (so a trace distinguishes template-only turns).
+    True only when the LLM successfully rephrased the draft AND the rephrasing passed grounding;
+    `prompt_hash` is the SHA-256 of the polish prompt file when polish ran, else `None` (so a trace
+    distinguishes template-only turns). `grounding_blocked` is True when a polished draft was
+    discarded for inventing a figure not in the turn's tool results (REQ-08), so the trace records
+    the fall back to the grounded template.
     """
 
     text: str
@@ -52,6 +60,7 @@ class GeneratedResponse:
     lang: str
     polished: bool
     prompt_hash: str | None
+    grounding_blocked: bool = False
 
 
 def _load_prompt() -> str:
@@ -68,6 +77,7 @@ def generate(
     lang: str,
     *,
     fields: dict[str, str] | None = None,
+    tool_results: list[Result] | None = None,
     polish: bool = True,
     client: LLMClient | None = None,
 ) -> GeneratedResponse:
@@ -75,14 +85,17 @@ def generate(
 
     `fields` are the template placeholders, filled from TOOL-RESULT FACTS by the caller (never
     the model) - e.g. the grounded `facts` string for an answer or the masked product number for
-    a confirmation. `polish=False` forces the deterministic template (used where polish adds no
-    value, e.g. re-auth). The LLM, when used, only rephrases the masked, fact-filled draft.
+    a confirmation. `tool_results` are THIS TURN's tool `Result` objects; a polished draft is
+    grounded against them (REQ-08) and discarded if it introduces a figure they do not contain.
+    `polish=False` forces the deterministic template (used where polish adds no value, e.g.
+    re-auth). The LLM, when used, only rephrases the masked, fact-filled draft.
 
     Fails closed to the deterministic template on a render error (missing field), an unavailable
-    LLM, or an empty reply (REQ-40). The template path is grounded by construction, so the
-    fallback never invents a figure.
+    LLM, an empty reply, or an ungrounded polish (REQ-40/REQ-08). The template path is grounded by
+    construction, so the fallback never invents a figure.
     """
     fields = fields or {}
+    tool_results = tool_results or []
     try:
         draft = render_template(outcome, lang, **fields)
     except KeyError as exc:  # a required placeholder was not supplied -> cannot render safely
@@ -106,6 +119,21 @@ def generate(
     polished = reply.strip()
     if not polished:  # empty reply -> honest fallback to the grounded template (REQ-40)
         return GeneratedResponse(text=draft, outcome=outcome, lang=lang, polished=False, prompt_hash=None)
+
+    # Grounding gate (task 4.3, REQ-08): the LLM may only rephrase; if it introduced a figure/date/
+    # status not in this turn's tool results, discard its text and return the grounded template.
+    # Deterministic code (not the model) makes this block decision.
+    grounding = check_grounding(polished, tool_results)
+    if not grounding.ok:
+        logger.warning(
+            "grounding blocked polished text for %s/%s; offending=%s; falling back to template",
+            outcome,
+            lang,
+            grounding.offending,
+        )
+        return GeneratedResponse(
+            text=draft, outcome=outcome, lang=lang, polished=False, prompt_hash=None, grounding_blocked=True
+        )
 
     return GeneratedResponse(
         text=polished, outcome=outcome, lang=lang, polished=True, prompt_hash=_prompt_hash()
@@ -135,4 +163,9 @@ if __name__ == "__main__":  # self-check: PII masked before the LLM, fallback on
 
     fb = generate(Outcome.REFUSE, "pt", client=_Down())
     assert not fb.polished and fb.prompt_hash is None and fb.text.strip()
+
+    # Grounding gate: a polish that invents a figure not in the (empty) tool results is blocked
+    # and the grounded template is returned instead (REQ-08).
+    blocked = generate(Outcome.CLARIFY, "es", client=StubLLMClient(default="Tu saldo es 9999 USD"))
+    assert not blocked.polished and blocked.grounding_blocked and "9999" not in blocked.text
     print("generator stub self-check OK")

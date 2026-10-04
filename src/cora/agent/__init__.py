@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from cora.agent.generator import GeneratedResponse, generate
 from cora.agent.graph import Node, Orchestrator, TraceSpan, TurnResult
+from cora.agent.grounding import GroundingResult, check_grounding
 from cora.agent.llm import (
     BedrockLLMClient,
     LLMClient,
@@ -25,6 +26,7 @@ from cora.agent.templates import Outcome, missing_translations, render_template
 __all__ = [
     "BedrockLLMClient",
     "GeneratedResponse",
+    "GroundingResult",
     "LLMClient",
     "LLMUnavailable",
     "Node",
@@ -38,6 +40,7 @@ __all__ = [
     "TraceSpan",
     "TurnRecord",
     "TurnResult",
+    "check_grounding",
     "generate",
     "get_llm_client",
     "missing_translations",

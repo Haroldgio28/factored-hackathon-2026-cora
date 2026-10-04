@@ -138,8 +138,9 @@ Rules for every task:
 - [ ] **4.2 Response generation + templates**
   - Versioned prompts (hash in trace), es/pt templates for every decision, PII masking before LLM.
   - _Requirements: REQ-18, REQ-36, REQ-40_
-- [ ] **4.3 Grounding checker**
+- [x] **4.3 Grounding checker**
   - Number/entity diff against tool results; block + template fallback; tests with adversarial generations.
+  - Done: `src/cora/agent/grounding.py` (`check_grounding(text, tool_results)`: deterministic number/date/status diff of the generated text against the CURRENT turn's tool `Result` values — numbers compared numerically across es/pt `1.234,56` and en `1,234.56` grouping, dates as `date` across ISO/day-first forms, statuses by language-neutral concept so a faithful translation passes but a contradicting status is blocked; fails closed on a figure with empty tool results). Wired into `src/cora/agent/generator.py`: after the LLM polish step the text is grounded against the turn's `tool_results`; an ungrounded figure makes DETERMINISTIC code (not the model) discard the polish and return the grounded template, recording `grounding_blocked` on the result for the trace. Evidence: `tests/unit/test_grounding.py` (adversarial invented balance/limit/date/rate/status all blocked; grounded figures pass; generator falls back on ungrounded polish). `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest` all green.
   - _Requirements: REQ-08_
 - [ ] **4.4 Confirmation protocol & verified actions**
   - _Requirements: REQ-09, REQ-14_
