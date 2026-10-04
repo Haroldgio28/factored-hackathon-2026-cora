@@ -534,9 +534,14 @@ class Orchestrator:
 
         The decision distinguishes a plain abstain (disclose nothing, offer a human) from an
         `abstain_route` (credit out of scope, POL-030/REQ-33 -> route to a human); the outcome
-        maps 1:1 so the right es/pt copy is rendered.
+        maps 1:1 so the right es/pt copy is rendered. On an `abstain_route` the routing reason
+        (e.g. `CREDIT_OUT_OF_SCOPE`) is logged and recorded on the trace span, so the credit
+        guardrail is explainable from the rule id + reason and never from model reasoning
+        (REQ-33, REQ-39). The engine computes nothing about credit eligibility.
         """
-        result = _from_decision("Abstain", decision)
+        result = _from_decision("Abstain", decision, detail=decision.route)
+        if decision.decision is Decision.ABSTAIN_ROUTE and decision.route is not None:
+            logger.info("policy %s -> abstain_route reason=%s", decision.rule_id, decision.route)
         result.response = self._render(state, Outcome.from_decision(decision.decision))
         return result
 

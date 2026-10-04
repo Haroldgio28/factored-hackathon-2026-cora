@@ -74,8 +74,8 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-60 | Mock tools with documented contracts | 38 | 2.2 | `documentation/TOOL_CONTRACTS.md` (inputs/outputs/errors/side-effects/limitations per tool) | Done |
 | SRC-61 | Trusted authentication | 10, 11 | 2.1 | `tests/unit/test_identity.py` (OTP + HMAC JWT, TTL, jti, ID-only refusal) | Done |
 | SRC-62 | Per-customer access in tool layer | 12 | 2.2 | `tests/unit/test_tools.py` FORBIDDEN on foreign resource + read-only `customer_id` | Done |
-| SRC-63 | Credit separation / no invented eligibility | 33 | 2.4, 4.6 | `rules.yaml` POL-030 abstain_route + `test_policy.py` (2.4 done); agent guard pending (4.6) | Partial |
-| SRC-64 | No lending or money movement | 17, 34 | 2.2, 4.6 | `test_tools.py` registry test: no money-movement tool exists (2.2 done); policy refusal path pending (4.6) | Partial |
+| SRC-63 | Credit separation / no invented eligibility | 33 | 2.4, 4.6 | `rules.yaml` POL-030 abstain_route + `test_policy.py`; agent graph renders `ABSTAIN_ROUTE`/`CREDIT_OUT_OF_SCOPE`, logs the reason + records it on the trace span, promises nothing about credit — `tests/unit/test_guards.py` | Done |
+| SRC-64 | No lending or money movement | 17, 34 | 2.2, 4.6 | `test_tools.py` registry test: no money-movement tool exists; agent graph refuses X2 via POL-020 (`REFUSE`) end-to-end — `tests/unit/test_guards.py` (refusal + registry assertion) | Done |
 | SRC-65 | Baseline vs system on same workload | 41 | 6.2, 6.3 | EVALUATION.md | Planned |
 | SRC-66 | Cases mix, label quality, versions, variability | 42, 44 | 6.1, 6.3 | run metadata | Planned |
 | SRC-67 | Include failures | 43, 47 | 6.9 | error analysis | Planned |
