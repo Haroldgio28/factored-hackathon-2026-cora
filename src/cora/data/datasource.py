@@ -271,6 +271,15 @@ class S3Source(DataSource):
     surface as `LocalSource` (REQ-20/REQ-51).
     """
 
+    # Bounded wall-clock timeout for a single remote httpfs/S3 operation (task 5.2, REQ-40). This
+    # is the real transport-edge timeout: DuckDB's core httpfs honours `http_timeout` (milliseconds)
+    # per HTTP operation, so a hung S3 socket raises instead of blocking the turn forever. DuckDB's
+    # own http retries are DISABLED (`http_retries=0`) so the single `tenacity` retry policy in
+    # `agent/graph.py::_safe_read` is the ONE source of retries - boto/httpfs never double-retries
+    # on top of it. A timed-out read surfaces to `_safe_read` as a raised error -> bounded retries
+    # -> fail-closed `Status.UNAVAILABLE`.
+    _HTTP_TIMEOUT_MS = 20_000
+
     def __init__(
         self,
         bucket: str | None = None,
@@ -278,6 +287,7 @@ class S3Source(DataSource):
         profile: str | None = None,
         memory_limit: str = "2GB",
         threads: int = 4,
+        http_timeout_ms: int = _HTTP_TIMEOUT_MS,
     ) -> None:
         from cora.settings import get_settings
 
@@ -287,6 +297,7 @@ class S3Source(DataSource):
         self.profile = profile if profile is not None else settings.datathon_profile
         self.memory_limit = memory_limit
         self.threads = threads
+        self.http_timeout_ms = int(http_timeout_ms)
         self._con: duckdb.DuckDBPyConnection | None = None
 
     def _source(
@@ -315,6 +326,10 @@ class S3Source(DataSource):
         con = duckdb.connect()
         con.execute(f"SET memory_limit='{self.memory_limit}'; SET threads={int(self.threads)}")
         con.execute("INSTALL httpfs; LOAD httpfs")
+        # Bound each remote HTTP operation and turn OFF httpfs's own retries so `tenacity` in
+        # `_safe_read` is the single retry policy (task 5.2, REQ-40). A stuck socket now RAISES.
+        con.execute(f"SET http_timeout={int(self.http_timeout_ms)}")
+        con.execute("SET http_retries=0")
         con.execute(f"SET s3_region='{self.region}'")
         creds = boto3.Session(profile_name=self.profile).get_credentials()
         if creds is not None:

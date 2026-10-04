@@ -43,13 +43,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
+
 from cora.agent.confirmation import (
     ConfirmationOutcome,
     request_confirmation,
     resolve_confirmation,
 )
 from cora.agent.generator import GeneratedResponse, generate
-from cora.agent.llm import LLMClient
+from cora.agent.llm import LLMClient, LLMUnavailable, get_llm_client
 from cora.agent.references import Reference, resolve_reference
 from cora.agent.state import SessionState, SessionStore
 from cora.agent.templates import Outcome, action_verb
@@ -58,6 +60,7 @@ from cora.handoff.package import HandoffPackage, build_package
 from cora.identity import Session
 from cora.nlu import entities as nlu_entities
 from cora.nlu import injection, language
+from cora.obs.resilience import CircuitBreaker
 from cora.obs.tracing import export_turn
 from cora.policy import (
     Decision,
@@ -185,6 +188,8 @@ class Orchestrator:
         tool_layer_factory: Callable[[Session], ToolLayer],
         llm: LLMClient | None = None,
         clock: Callable[[], datetime] = _utcnow,
+        breaker: CircuitBreaker | None = None,
+        classifier: Callable[[str, str], tuple[Intent | None, float]] | None = None,
         settings=None,  # noqa: ANN001 - a cora.settings.Settings; injected in tests for the trace dir
     ) -> None:
         self._policy = policy
@@ -192,6 +197,23 @@ class Orchestrator:
         self._tool_layer_factory = tool_layer_factory
         self._llm = llm
         self._clock = clock
+        # The intent classifier seam (task 5.2/5.3). `_classify` calls this and FAILS CLOSED to
+        # `keyword_fallback_intent` on any error. The learned calibrated head is wired here in 5.3;
+        # until then the default IS the keyword baseline, so there is already a real production
+        # classifier (not the old `(None, 0.0)` stub) and the fallback path has a real caller. The
+        # import is LOCAL to break an import cycle (cora.agent package init -> graph -> nlu.fallback
+        # -> nlu.baselines -> cora.agent.llm -> cora.agent package init); it stays importable when
+        # `nlu.fallback` is the entry module (its own `__main__` self-check).
+        from cora.nlu.fallback import keyword_fallback_intent
+
+        self._classifier = classifier if classifier is not None else keyword_fallback_intent
+        # The session language for the current turn, set by `step` before `_classify` so the
+        # one-arg classifier seam (patched by every Phase-4 test) still works unchanged.
+        self._turn_language = "es"
+        # One breaker per orchestrator (task 5.2). After repeated LLM-polish failure it opens and
+        # `_render` forces template mode WITHOUT attempting the LLM. Best-effort/in-memory: a
+        # breaker update NEVER fails a turn (it only selects LLM-vs-template, see `_render`).
+        self._breaker = breaker if breaker is not None else CircuitBreaker()
         # The trace exporter reads `settings.trace_dir`; `None` falls back to `get_settings()`
         # inside the exporter (the production default). Injected in tests to redirect the file.
         self._settings = settings
@@ -250,13 +272,17 @@ class Orchestrator:
         injection_hit = injection.screen(masked).injection_hit
 
         # 4. Classify + extract + resolve reference (deterministic; LLM only proposes entities).
+        #    `_classify` keeps its one-arg seam (every Phase-4 test patches `(self, text)`), so the
+        #    session language it needs for the keyword fallback is handed over on the instance for
+        #    THIS turn only - the machine runs one turn at a time, so there is no cross-turn race.
+        self._turn_language = state.language
         intent, confidence = self._classify(masked)
         reference = self._resolve_reference(state, masked)
 
         # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
         #    results are kept so an escalation can build the handoff package from the SAME facts.
         tools = self._tool_layer_factory(session)
-        policy_input, tool_results = self._build_policy_input(
+        policy_input, tool_results, tool_failed = self._build_policy_input(
             state=state,
             tools=tools,
             intent=intent,
@@ -286,6 +312,17 @@ class Orchestrator:
             if product_id is not None:
                 self._open_confirmation(state, result, tools, intent, product_id)
 
+        # A tool read came back UNAVAILABLE (after `_safe_read`'s bounded retries): the tool
+        # outcome is in DOUBT, so FAIL CLOSED (REQ-40, security steering P4). This is distinct from
+        # a not-owned read (FORBIDDEN/NOT_FOUND is a definite deny the policy already handles): the
+        # policy, seeing only `resource_owned=False`, routed to a generic abstain/clarify, but the
+        # honest thing to say is the es/pt TOOL_UNAVAILABLE copy - never guess a value, never claim
+        # the resource is not owned. We only override the CUSTOMER-FACING text; the policy decision,
+        # rule id and trace are unchanged. An escalation/handoff/confirm/answer turn is left alone
+        # (it already discloses nothing or has grounded facts); the streak below drives escalation.
+        if tool_failed and result.node not in ("Escalate", "Handoff", "Confirm", "Answer"):
+            result.response = self._render(state, Outcome.TOOL_UNAVAILABLE)
+
         # Record the (masked) turn BEFORE any handoff so the package's verbatim request is this
         # turn's text; reset the clarification counter on any non-clarify outcome.
         state.record_turn(masked, intent.value if intent else None, decision.decision.value)
@@ -293,10 +330,13 @@ class Orchestrator:
             state.clarification_count = 0
 
         # 7. Cross-turn escalation (REQ-15, task 4.5): fold this turn's sentiment / tool-failure
-        #    signal into the streak counters. A streak escalates even when the policy did not.
+        #    signal into the streak counters. A streak escalates even when the policy did not. A
+        #    tool read that failed THIS turn (`tool_failed`, detected automatically from a
+        #    Status.UNAVAILABLE read after retries) feeds the streak on its own - the caller does
+        #    not have to pass `tool_failed=True`; a real repeated tool outage escalates by itself.
         signals = turn_signals or TurnSignals()
         streak_reason = update_turn_signals(
-            state, sentiment=signals.sentiment, tool_failed=signals.tool_failed
+            state, sentiment=signals.sentiment, tool_failed=signals.tool_failed or tool_failed
         )
         if result.node not in ("Escalate", "Handoff") and streak_reason is not None:
             result = _node_handoff(self, state, decision)
@@ -339,13 +379,25 @@ class Orchestrator:
     # -- understand helpers (deterministic) --------------------------------------------
 
     def _classify(self, masked_utterance: str) -> tuple[Intent | None, float]:
-        """Classify the masked utterance into an intent + confidence.
+        """Classify the masked utterance into an intent + confidence (task 5.2 fallback wired).
 
-        4.1 wires the seam; the trained classifier is loaded by a later subtask/offline artifact.
-        Absent a model the turn is low-confidence `OTHER`, which routes to clarify/escalate by
-        policy - the safe default, never a guessed answer.
+        Calls the injected `classifier` (the learned calibrated head is wired in 5.3; until then
+        the injected default IS the keyword baseline, so there is a real production classifier).
+        On ANY classifier failure - a missing/corrupt artifact, a load error, an inference error -
+        the turn FAILS CLOSED to `keyword_fallback_intent` (REQ-40, design section 10): the
+        deterministic `KeywordBaseline` at the conservative rules.yaml stand-in band. So a
+        classifier outage still yields a classified-or-safely-clarified turn, never a crash and
+        never a guessed answer. The session language for this turn is read from `_turn_language`
+        (set by `step` before this call) so the keyword table uses the right es/pt rules.
         """
-        return None, 0.0
+        from cora.nlu.fallback import keyword_fallback_intent  # local: break the import cycle
+
+        language = getattr(self, "_turn_language", "es")
+        try:
+            return self._classifier(masked_utterance, language)
+        except Exception:  # noqa: BLE001 - classifier unavailable: fail closed to the baseline
+            logger.warning("intent classifier unavailable; using keyword fallback", exc_info=True)
+            return keyword_fallback_intent(masked_utterance, language)
 
     def _resolve_reference(self, state: SessionState, masked_utterance: str) -> Reference:
         """Extract candidate entities (LLM proposes) then resolve the reference from state (code)."""
@@ -363,7 +415,7 @@ class Orchestrator:
         injection_hit: bool,
         reference: Reference,
         proposed_action: Decision | None,
-    ) -> tuple[PolicyInput, list[Result]]:
+    ) -> tuple[PolicyInput, list[Result], bool]:
         """Resolve every policy flag deterministically via the ToolLayer (never the model).
 
         Ownership/state/fraud are facts, so they come from the session-bound tool layer: the
@@ -373,22 +425,30 @@ class Orchestrator:
 
         Also returns the OK tool `Result`s fetched this turn so an escalation can build the
         handoff package from the SAME verified facts (task 4.5) without re-querying - the facts a
-        human sees are exactly the ones the policy decided on.
+        human sees are exactly the ones the policy decided on - and a `tool_failed` flag that is
+        True when a read this turn came back `Status.UNAVAILABLE` (the tool outcome is in DOUBT,
+        after `_safe_read`'s bounded retries). `tool_failed` is DISTINCT from not-owned
+        (FORBIDDEN/NOT_FOUND): a not-owned read is a definite answer (deny), a failed read is doubt,
+        so the orchestrator renders the honest tool-unavailable message and feeds the escalation
+        streak only for the latter (REQ-40, security steering P4).
         """
         product_id = reference.product_id or state.referenced_product_id
         resource_owned = False
         product_owned = False
         state_allows = False
+        tool_failed = False
         referenced_txn: ReferencedTransaction | None = None
         tool_results: list[Result] = []
 
         if intent in _READ_INTENTS and product_id is not None:
-            balance = tools.get_balance(GetBalanceInput(product_id=product_id))
+            balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
             resource_owned = balance.status is Status.OK
+            tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
             if resource_owned:
                 tool_results.append(balance)
         if intent in _ACTION_INTENTS and product_id is not None:
-            details = tools.get_card_details(GetCardDetailsInput(product_id=product_id))
+            details = _safe_read(lambda: tools.get_card_details(GetCardDetailsInput(product_id=product_id)))
+            tool_failed = tool_failed or details.status is Status.UNAVAILABLE
             if details.status is Status.OK and details.data is not None:
                 product_owned = True
                 state_allows = details.data.product_status in _ACTIONABLE_CARD_STATUSES
@@ -406,7 +466,7 @@ class Orchestrator:
             resource_owned=resource_owned,
             proposed_action=proposed_action,
         )
-        return policy_input, tool_results
+        return policy_input, tool_results, tool_failed
 
     # -- nodes (design section 4). Each records a trace span. ---------------------------
     #
@@ -425,8 +485,30 @@ class Orchestrator:
         Deterministic template first, LLM polish via the orchestrator's client when configured;
         fails closed to the template on any LLM error (REQ-40). Figures come only from `fields`,
         which the node fills from tool facts - the model never originates a value.
+
+        Task 5.2 adds the circuit breaker as a routing switch on top of this already-safe fallback:
+        while the breaker is OPEN, polish is forced off and the LLM is NOT attempted (short-circuit
+        straight to the template). While closed/half-open the LLM is attempted through a thin
+        breaker-observing wrapper that records a success/failure so repeated outages open the
+        breaker. The breaker only SELECTS the path; `generate` is unchanged and still fails closed.
         """
-        return generate(outcome, state.language, fields=fields, client=self._llm)
+        # GUARDRAIL (task 5.2): the breaker INSPECTION is best-effort too, not just its writes. A
+        # breaker (or its injected clock) that raises on `allow()` must never fail the turn - it only
+        # SELECTS LLM-vs-template. If inspection raises, log it and fall through to the normal
+        # generator path (which itself fails closed to the template on `LLMUnavailable`), so a broken
+        # breaker degrades to "attempt the LLM" rather than crashing a verified turn. (A persist/
+        # journal/transactional breaker would be the WRONG fix here - the breaker is advisory.)
+        try:
+            breaker_open = not self._breaker.allow()
+        except Exception:  # noqa: BLE001 - breaker inspection is advisory; never fail a turn on it
+            logger.warning("circuit-breaker allow() failed; continuing via generator", exc_info=True)
+            breaker_open = False
+        if breaker_open:
+            # Breaker open: skip the LLM entirely, render the grounded template (REQ-40).
+            return generate(outcome, state.language, fields=fields, polish=False, client=self._llm)
+        return generate(
+            outcome, state.language, fields=fields, client=_BreakerClient(self._llm, self._breaker)
+        )
 
     def _node_reauth(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """POL-000: the session is not valid for this turn -> re-authenticate (fail closed)."""
@@ -485,7 +567,11 @@ class Orchestrator:
         it the turn fails closed to the tool-unavailable copy rather than restating a blank card.
         """
         action = CardAction.FREEZE if intent is Intent.A1 else CardAction.UNFREEZE
-        details = tools.get_card_details(GetCardDetailsInput(product_id=product_id))
+        # Idempotent read -> same bounded-retry fail-closed boundary as every other read (task 5.2,
+        # REQ-40). A transient 5xx/timeout on THIS read becomes `Status.UNAVAILABLE` rather than
+        # escaping `step()`, so the turn renders the honest tool-unavailable copy below and no
+        # pending confirmation is opened (never restate a blank/guessed card).
+        details = _safe_read(lambda: tools.get_card_details(GetCardDetailsInput(product_id=product_id)))
         masked_number = details.data.product_number_masked if details.data is not None else None
         if details.status is not Status.OK or not masked_number:
             result.response = self._render(state, Outcome.TOOL_UNAVAILABLE)
@@ -612,6 +698,91 @@ class Orchestrator:
         result = _from_decision("Abstain", decision)
         result.response = self._render(state, Outcome.REFUSE)
         return result
+
+
+# Bounded retry for an IDEMPOTENT read tool (task 5.2, REQ-40, design section 10). A read is
+# side-effect-free, so a transient remote error (S3/httpfs throttle or 5xx) is safe to re-attempt:
+# at most TWO retries (three total attempts) with exponential backoff + jitter, exactly the Bedrock
+# policy in `agent/llm.py` (same pinned `tenacity`, no new dependency, no second retry library).
+# The bounded WALL-CLOCK TIMEOUT lives at the transport edge, NOT here: the remote `DataSource`
+# read goes through DuckDB `httpfs`, whose `http_timeout` (set on the `S3Source` connection, with
+# `http_retries=0` so it does not double-retry under this policy) bounds a hung HTTP operation, so
+# a stuck socket surfaces here as a RAISED timeout - which this retry then re-attempts and finally
+# fails closed on. (The Bedrock client bounds its own Converse call with botocore's
+# `read_timeout`/`connect_timeout` + disabled boto retries, the same single-retry-policy idea.) We do NOT
+# wrap the read in a worker-thread watchdog: a synchronous DuckDB read is bound to the connection's
+# thread, so running it off-thread would break DuckDB's single-thread-per-connection contract (the
+# wrong fix). Non-idempotent operations (the confirmed card action) are NOT routed through here;
+# they keep their exactly-once confirm/read-back protocol.
+_READ_MAX_ATTEMPTS = 3
+
+
+@retry(
+    retry=retry_if_exception_type(Exception),
+    stop=stop_after_attempt(_READ_MAX_ATTEMPTS),
+    wait=wait_exponential_jitter(initial=0.1, max=2.0),
+    reraise=True,
+)
+def _read_with_retry(read: Callable[[], Result]) -> Result:
+    """Run one idempotent read; a raised transient/timeout error is retried by the decorator.
+
+    A read that raises (a transient remote error or a transport-level timeout) raises out of here,
+    so `tenacity` re-attempts up to `_READ_MAX_ATTEMPTS` with exponential backoff + jitter. The
+    final failure propagates to `_safe_read`, which fails closed.
+    """
+    return read()
+
+
+def _safe_read(read: Callable[[], Result]) -> Result:
+    """Run an idempotent read with bounded retries, failing closed on exhaustion (task 5.2, REQ-40).
+
+    The tool layer already returns a non-OK `Result` for the errors it can see (invalid/not-found/
+    forbidden, overlay I/O). But a read backed by a remote `DataSource` (S3/httpfs on AWS) can RAISE
+    on a timeout or 5xx, and that would otherwise crash the turn. This is a genuine fail-closed path
+    (a tool outcome is in DOUBT, security steering P1/P4 - distinct from best-effort observability):
+    after at most two retries a still-raising read becomes `Status.UNAVAILABLE`, which the
+    orchestrator routes to the honest tool-unavailable message + escalation. The turn discloses
+    NOTHING and offers a human; no figure can leak from a failure.
+    """
+    try:
+        return _read_with_retry(read)
+    except Exception as exc:  # noqa: BLE001 - any tool/transport/timeout error fails closed uniformly
+        logger.warning("read tool failed after retries, failing closed: %s", type(exc).__name__)
+        return Result(status=Status.UNAVAILABLE, message="tool unavailable")
+
+
+class _BreakerClient:
+    """Wraps the orchestrator's LLM client so each `complete` call feeds the circuit breaker.
+
+    A successful `complete` records a success (closing a half-open breaker); an `LLMUnavailable`
+    records a failure (opening the breaker on a streak) and is re-raised so `generate` still fails
+    closed to the grounded template. GUARDRAIL (task 5.2): the breaker update is best-effort - it
+    is wrapped so a bookkeeping error can NEVER raise into the turn; the real LLM result (or the
+    real `LLMUnavailable`) always propagates unchanged, so the breaker only ever SELECTS the path.
+    """
+
+    def __init__(self, inner: LLMClient | None, breaker: CircuitBreaker) -> None:
+        # `generate` resolves the default client when passed None, but it is passed THIS wrapper,
+        # so resolve the real client here when the orchestrator has none (stub under CORA_NLU_STUB).
+        self._inner = inner if inner is not None else get_llm_client()
+        self._breaker = breaker
+
+    def complete(self, *, system: str, user: str, max_tokens: int = 512) -> str:
+        try:
+            reply = self._inner.complete(system=system, user=user, max_tokens=max_tokens)
+        except LLMUnavailable:
+            self._record(self._breaker.record_failure)
+            raise
+        self._record(self._breaker.record_success)
+        return reply
+
+    @staticmethod
+    def _record(update: Callable[[], None]) -> None:
+        """Run a breaker state update, swallowing any error (best-effort; never fails the turn)."""
+        try:
+            update()
+        except Exception:  # noqa: BLE001 - a best-effort breaker update must never fail a turn
+            logger.warning("circuit-breaker state update failed; continuing", exc_info=True)
 
 
 # -- module-level node helpers (keep the Orchestrator surface small) -----------------------

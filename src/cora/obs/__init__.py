@@ -6,6 +6,7 @@ the AWS target (design section 12) and sits behind the single `export_turn` sink
 
 from __future__ import annotations
 
+from cora.obs.resilience import BreakerState, CircuitBreaker
 from cora.obs.tracing import export_turn
 
-__all__ = ["export_turn"]
+__all__ = ["BreakerState", "CircuitBreaker", "export_turn"]

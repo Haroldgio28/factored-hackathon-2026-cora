@@ -24,7 +24,7 @@ import logging
 import os
 from typing import Protocol, runtime_checkable
 
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
 
 from cora.settings import Settings, get_settings
 
@@ -42,6 +42,13 @@ __all__ = [
 # call that keeps failing degrades to the safe default rather than blocking the turn (REQ-40 scope
 # for Phase 3; the model-level fallback id is wired in the Phase-5 orchestrator, not here - D3).
 _MAX_ATTEMPTS = 3
+
+# Hard wall-clock bounds on a single Converse call (REQ-40 "bounded timeout"), set on the boto3
+# client so a hung connection cannot block a turn indefinitely. boto's own retries are DISABLED
+# (`max_attempts=0`) so it does not re-attempt on top of tenacity, which owns the bounded retry +
+# exponential backoff with jitter above - one retry policy, not two stacked.
+_CONNECT_TIMEOUT_S = 3.0
+_READ_TIMEOUT_S = 20.0
 
 
 class LLMUnavailable(RuntimeError):
@@ -84,11 +91,18 @@ class BedrockLLMClient:
             raise LLMUnavailable("CORA_BEDROCK_MODEL_ID is not set")
         # boto3 is a core dep; import locally so this module stays importable where boto3 is absent.
         import boto3
+        from botocore.config import Config
 
+        # Bounded timeouts + boto retries off (tenacity owns the retry policy; see `_converse`).
+        config = Config(
+            connect_timeout=_CONNECT_TIMEOUT_S,
+            read_timeout=_READ_TIMEOUT_S,
+            retries={"max_attempts": 0},
+        )
         self._client = boto3.Session(
             profile_name=self._settings.aws_profile or None,
             region_name=self._settings.aws_region,
-        ).client("bedrock-runtime")
+        ).client("bedrock-runtime", config=config)
 
     def complete(self, *, system: str, user: str, max_tokens: int = 512) -> str:
         try:
@@ -102,7 +116,9 @@ class BedrockLLMClient:
     @retry(
         retry=retry_if_exception_type(Exception),
         stop=stop_after_attempt(_MAX_ATTEMPTS),
-        wait=wait_exponential(multiplier=0.5, max=4),
+        # Exponential backoff WITH jitter (REQ-40): tenacity-native, no new dependency. Jitter
+        # spreads retries so concurrent turns do not re-hit a throttled endpoint in lockstep.
+        wait=wait_exponential_jitter(initial=0.5, max=4.0),
         reraise=True,
     )
     def _converse(self, *, system: str, user: str, max_tokens: int) -> str:
