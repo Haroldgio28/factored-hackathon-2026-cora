@@ -229,7 +229,7 @@ def test_turn_trace_id_is_retrievable_via_handoff_package(
     clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
     session = _authenticated_session(clock)
     orch = _orchestrator(clock, tmp_path)
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.E2, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.E2, 0.99))
 
     result = orch.step(session, "quiero poner una queja")
     # The id is stable within the turn and retrievable from the handoff package a human/UI reads.
@@ -244,7 +244,7 @@ def test_every_turn_writes_exactly_one_trace_record(tmp_path: Path, monkeypatch:
     clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
     session = _authenticated_session(clock)
     orch = _orchestrator(clock, tmp_path)
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.E2, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.E2, 0.99))
 
     orch.step(session, "quiero poner una queja")
     orch.step(session, "sigo molesto")
@@ -278,7 +278,7 @@ def test_trace_write_failure_does_not_change_the_handoff_turn_outcome(
         clock=clock,
         settings=_Settings(tmp_path),
     )
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.E2, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.E2, 0.99))
 
     def _boom(*_a: object, **_k: object) -> None:
         raise OSError("trace sink unavailable")
@@ -305,7 +305,7 @@ def test_handoff_record_matches_the_returned_final_spans_and_case_id(
     clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
     session = _authenticated_session(clock)
     orch = _orchestrator(clock, tmp_path)
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.E2, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.E2, 0.99))
 
     result = orch.step(session, "quiero poner una queja")
     assert result.node == "Handoff"
@@ -343,7 +343,7 @@ def test_handoff_console_renders_the_stored_trace_id(tmp_path: Path, monkeypatch
         clock=clock,
         settings=_Settings(tmp_path),
     )
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.E2, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.E2, 0.99))
 
     result = orch.step(session, "quiero poner una queja")
     stored = store.get(result.handoff_case_id)
@@ -421,7 +421,7 @@ def test_confirmed_card_action_still_runs_when_trace_sink_is_down(
         clock=clock,
         settings=_Settings(tmp_path / "traces"),
     )
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (Intent.A1, 0.99))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (Intent.A1, 0.99))
 
     # Turn 1: reference the owned active card and reach Confirm (pending opened, nothing executed).
     state = orch._store.require(session)  # noqa: SLF001 - test seam

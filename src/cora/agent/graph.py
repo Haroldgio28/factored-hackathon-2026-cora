@@ -38,6 +38,7 @@ Every node records a trace span (design section 4 "every node writes a trace spa
 from __future__ import annotations
 
 import logging
+import threading
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -198,18 +199,14 @@ class Orchestrator:
         self._llm = llm
         self._clock = clock
         # The intent classifier seam (task 5.2/5.3). `_classify` calls this and FAILS CLOSED to
-        # `keyword_fallback_intent` on any error. The learned calibrated head is wired here in 5.3;
-        # until then the default IS the keyword baseline, so there is already a real production
-        # classifier (not the old `(None, 0.0)` stub) and the fallback path has a real caller. The
-        # import is LOCAL to break an import cycle (cora.agent package init -> graph -> nlu.fallback
-        # -> nlu.baselines -> cora.agent.llm -> cora.agent package init); it stays importable when
-        # `nlu.fallback` is the entry module (its own `__main__` self-check).
-        from cora.nlu.fallback import keyword_fallback_intent
-
-        self._classifier = classifier if classifier is not None else keyword_fallback_intent
-        # The session language for the current turn, set by `step` before `_classify` so the
-        # one-arg classifier seam (patched by every Phase-4 test) still works unchanged.
-        self._turn_language = "es"
+        # `keyword_fallback_intent` on any error. In 5.3 the default is `_default_classify`: the
+        # trained calibrated head (`learned_intent`) when the real 384-d MiniLM encoder is active,
+        # and the deterministic `KeywordBaseline` under `CORA_NLU_STUB=1` (the 64-d stub cannot
+        # drive the 384-d head, so tests/offline use the keyword baseline, which STILL returns a
+        # real intent for a known utterance - proving `_classify` is no longer the `(None, 0.0)`
+        # stub). The import is LOCAL to break an import cycle (cora.agent package init -> graph ->
+        # nlu.fallback -> nlu.baselines -> cora.agent.llm -> cora.agent package init).
+        self._classifier = classifier if classifier is not None else _default_classify
         # One breaker per orchestrator (task 5.2). After repeated LLM-polish failure it opens and
         # `_render` forces template mode WITHOUT attempting the LLM. Best-effort/in-memory: a
         # breaker update NEVER fails a turn (it only selects LLM-vs-template, see `_render`).
@@ -217,10 +214,59 @@ class Orchestrator:
         # The trace exporter reads `settings.trace_dir`; `None` falls back to `get_settings()`
         # inside the exporter (the production default). Injected in tests to redirect the file.
         self._settings = settings
+        # Per-session turn isolation (REQ-51). The `Orchestrator` is a per-process singleton shared
+        # across concurrent FastAPI requests, and a turn mutates the SAME mutable `SessionState`
+        # for a `jti` (it writes `state.language`, resolves the reference, opens a confirmation).
+        # Two overlapping requests carrying the same token would otherwise interleave those
+        # mutations - e.g. a second turn could flip `state.language` between the first turn's
+        # language choice and its classification/rendering, misrouting deterministic policy. A
+        # per-`jti` lock serialises turns FOR ONE SESSION only (never a global lock: different
+        # sessions still run concurrently), so each turn sees a consistent, turn-local view of its
+        # own state. The locks live in memory, one per active session.
+        self._session_locks: dict[str, threading.Lock] = {}
+        self._session_locks_guard = threading.Lock()
+
+    def _session_lock(self, jti: str) -> threading.Lock:
+        """Return the lock serialising turns for one session, creating it on first use.
+
+        The registry guard is held only for the dict lookup/insert, never for the turn itself, so
+        creating a lock for one session never blocks a turn running under another's lock.
+        """
+        with self._session_locks_guard:
+            lock = self._session_locks.get(jti)
+            if lock is None:
+                lock = threading.Lock()
+                self._session_locks[jti] = lock
+            return lock
 
     # -- public entry point ------------------------------------------------------------
 
     def step(
+        self,
+        session: Session,
+        utterance: str,
+        *,
+        proposed_action: Decision | None = None,
+        turn_signals: TurnSignals | None = None,
+    ) -> TurnResult:
+        """Run one turn under this session's lock so overlapping same-token requests can't interleave.
+
+        The whole turn body runs inside the per-`jti` lock (REQ-51): all reads and mutations of the
+        session's mutable `SessionState` - the language choice, classification, reference
+        resolution, confirmation and rendering - are serialised FOR THIS SESSION, so a concurrent
+        request for the same token cannot flip shared state mid-turn. Different sessions hold
+        different locks and still run concurrently; this is per-session isolation, never a global
+        serialization of the shared orchestrator.
+        """
+        with self._session_lock(session.jti):
+            return self._step_locked(
+                session,
+                utterance,
+                proposed_action=proposed_action,
+                turn_signals=turn_signals,
+            )
+
+    def _step_locked(
         self,
         session: Session,
         utterance: str,
@@ -272,11 +318,11 @@ class Orchestrator:
         injection_hit = injection.screen(masked).injection_hit
 
         # 4. Classify + extract + resolve reference (deterministic; LLM only proposes entities).
-        #    `_classify` keeps its one-arg seam (every Phase-4 test patches `(self, text)`), so the
-        #    session language it needs for the keyword fallback is handed over on the instance for
-        #    THIS turn only - the machine runs one turn at a time, so there is no cross-turn race.
-        self._turn_language = state.language
-        intent, confidence = self._classify(masked)
+        #    The session language is passed EXPLICITLY into `_classify` (not stashed on the shared
+        #    instance), so it stays request-local: the `Orchestrator` is a per-process singleton
+        #    shared across concurrent FastAPI requests, and a mutable per-turn field could let an
+        #    overlapping es/pt turn classify with the wrong language and misroute policy (REQ-51).
+        intent, confidence = self._classify(masked, state.language)
         reference = self._resolve_reference(state, masked)
 
         # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
@@ -378,7 +424,7 @@ class Orchestrator:
 
     # -- understand helpers (deterministic) --------------------------------------------
 
-    def _classify(self, masked_utterance: str) -> tuple[Intent | None, float]:
+    def _classify(self, masked_utterance: str, language: str) -> tuple[Intent | None, float]:
         """Classify the masked utterance into an intent + confidence (task 5.2 fallback wired).
 
         Calls the injected `classifier` (the learned calibrated head is wired in 5.3; until then
@@ -387,12 +433,12 @@ class Orchestrator:
         the turn FAILS CLOSED to `keyword_fallback_intent` (REQ-40, design section 10): the
         deterministic `KeywordBaseline` at the conservative rules.yaml stand-in band. So a
         classifier outage still yields a classified-or-safely-clarified turn, never a crash and
-        never a guessed answer. The session language for this turn is read from `_turn_language`
-        (set by `step` before this call) so the keyword table uses the right es/pt rules.
+        never a guessed answer. The session `language` is passed in EXPLICITLY (never read from
+        shared instance state) so overlapping concurrent requests on the shared orchestrator each
+        classify with their own es/pt rules - no cross-request language bleed (REQ-51).
         """
         from cora.nlu.fallback import keyword_fallback_intent  # local: break the import cycle
 
-        language = getattr(self, "_turn_language", "es")
         try:
             return self._classifier(masked_utterance, language)
         except Exception:  # noqa: BLE001 - classifier unavailable: fail closed to the baseline
@@ -698,6 +744,27 @@ class Orchestrator:
         result = _from_decision("Abstain", decision)
         result.response = self._render(state, Outcome.REFUSE)
         return result
+
+
+def _default_classify(masked_utterance: str, language: str) -> tuple[Intent | None, float]:
+    """The orchestrator's default intent classifier (task 5.3): learned head or keyword baseline.
+
+    Uses the trained calibrated head (`cora.nlu.classifier.learned_intent`) when the real 384-d
+    MiniLM encoder is active, and the deterministic `KeywordBaseline` under `CORA_NLU_STUB=1` (the
+    64-d stub cannot feed the 384-d head, so tests/offline runs use the keyword baseline). Both
+    return a REAL intent for a known utterance, so this is no longer the 4.1 `(None, 0.0)` stub.
+    Any failure propagates to `_classify`, which fails closed to `keyword_fallback_intent` (REQ-40).
+
+    Imports are LOCAL to break the agent-package import cycle (same reason as in `_classify`).
+    """
+    from cora.nlu.embeddings import stub_enabled
+    from cora.nlu.fallback import keyword_fallback_intent
+
+    if stub_enabled():
+        return keyword_fallback_intent(masked_utterance, language)
+    from cora.nlu.classifier import learned_intent
+
+    return learned_intent(masked_utterance, language)
 
 
 # Bounded retry for an IDEMPOTENT read tool (task 5.2, REQ-40, design section 10). A read is

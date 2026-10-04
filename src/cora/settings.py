@@ -44,6 +44,14 @@ class Settings(BaseSettings):
         DEFAULT_SESSION_TTL_MINUTES, alias="CORA_IDENTITY_SESSION_TTL_MINUTES"
     )
 
+    # Agent console API key (task 5.3, REQ-16). The static shared key the agent console sends on
+    # the `/handoffs` read endpoints; it is a secret, so only its NAME ships in `.env.example`
+    # (empty) and the endpoints fail CLOSED (401) when it is unset or does not match. This is the
+    # LOCAL stand-in for a real agent principal (AWS Cognito group/role, design section 12 /
+    # Phase 8); the key is replaced by a Cognito claim on AWS - a documented seam, not JWT/role
+    # machinery here.
+    agent_console_key: str = Field("", alias="CORA_AGENT_CONSOLE_KEY")
+
     # Observability (task 5.1, REQ-39). The per-turn JSONL trace exporter appends to
     # `<trace_dir>/traces.jsonl`; the dir lives under the gitignored `data/_state/` runtime area.
     trace_dir: Path = Field(DEFAULT_TRACE_DIR, alias="CORA_TRACE_DIR")

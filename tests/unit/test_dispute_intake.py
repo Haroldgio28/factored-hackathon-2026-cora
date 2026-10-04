@@ -177,7 +177,7 @@ def _orchestrator(clock: _Clock, store: InMemoryHandoffStore, *, owned: set[str]
 
 
 def _patch_intent(monkeypatch: pytest.MonkeyPatch, intent: Intent, confidence: float = 0.99) -> None:
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (intent, confidence))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (intent, confidence))
 
 
 @pytest.mark.parametrize(

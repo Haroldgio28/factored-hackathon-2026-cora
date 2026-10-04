@@ -136,7 +136,7 @@ def _orchestrator(
 
 
 def _patch_intent(monkeypatch: pytest.MonkeyPatch, intent: Intent, confidence: float) -> None:
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (intent, confidence))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (intent, confidence))
 
 
 # -- 1. breaker opens after repeated LLM failures -> template mode ---------------------
