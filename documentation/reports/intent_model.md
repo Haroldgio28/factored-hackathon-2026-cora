@@ -15,8 +15,8 @@ char-ngram** variant is the deliberate "no cross-lingual transfer" comparison (N
 shares no space across es/pt, so its es-vs-pt behaviour read against MiniLM's is the contrast the
 comparison exists to surface.
 
-> **Encoder provenance (honesty, REQ-47).** STUB (sandbox could not download MiniLM weights; the real-encoder path in train_intent_model.py is unchanged and re-runs on a host with HF access). TF-IDF numbers are download-free and real either way.
-> Encoder in this run: `StubEncoder (hash, 64-d) - MiniLM weights not downloadable in this sandbox`. The TF-IDF numbers are download-free and real
+> **Encoder provenance (honesty, REQ-47).** REAL MiniLM
+> Encoder in this run: `paraphrase-multilingual-MiniLM-L12-v2`. The TF-IDF numbers are download-free and real
 > regardless; the MiniLM-head numbers below carry this provenance caveat.
 
 ## 2. Metrics justification
@@ -32,8 +32,8 @@ es-vs-pt breakdown with sample sizes.
 | --- | --- | --- | --- | --- | --- |
 | B-maj (majority) | - | 0.062 | - | - | - |
 | B-kw (keyword es/pt) | - | 0.744 | - | 0.812 | 0.675 |
-| MiniLM + LogReg (calibrated) | 0.4454 | 0.4605 | 0.1356 | 0.4077 | 0.4586 |
-| TF-IDF char-ngram (no x-lingual) | 0.9321 | 0.9211 | 0.4378 | 0.889 | 0.9786 |
+| MiniLM + LogReg (calibrated) | 0.9354 | 0.942 | 0.4221 | 0.9119 | 0.9771 |
+| TF-IDF char-ngram (no x-lingual) | 0.917 | 0.913 | 0.4434 | 0.8771 | 0.9771 |
 
 Train carries **15 of 16 classes**: X3 is emptied from train by the 3.3 cross-split dedup
 (`splits.json` `missing_after_dedup`), so it is unlearnable here and is **not** inflated away.
@@ -42,13 +42,13 @@ Train carries **15 of 16 classes**: X3 is emptied from train by the 3.3 cross-sp
 
 | class | MiniLM recall | TF-IDF recall |
 | --- | --- | --- |
-| E1 | 0.3333 | 0.6667 |
-| E2 | 0.8 | 1.0 |
-| E3 | 0.75 | 1.0 |
-| E4 | 0.5 | 1.0 |
+| E1 | 1.0 | 0.6667 |
+| E2 | 1.0 | 1.0 |
+| E3 | 1.0 | 1.0 |
+| E4 | 1.0 | 1.0 |
 
-> **TF-IDF ECE is high (0.4378) relative to its accuracy (0.9211)** and worse
-> than the MiniLM head (0.1356). This is the known over-confidence of a char-ngram model that
+> **TF-IDF ECE is high (0.4434) relative to its accuracy (0.913)** and worse
+> than the MiniLM head (0.4221). This is the known over-confidence of a char-ngram model that
 > separates the training classes almost perfectly but whose probabilities are poorly spread - exactly
 > why calibration quality (ECE), not accuracy alone, is reported. The committed numbers are
 > single test-split point estimates; the reliability figure uses CV folds for the calibration curve.
@@ -83,12 +83,14 @@ under the named cost matrix. The ordering is the brief's priority: **unsafe auto
 is always representable by POL-060/POL-070 - the engine's rule order can never be handed a pair it
 cannot express.
 
-**Frozen pair (selected on validation, n=45):**
-`tau_escalate = 0.2`, `tau_clarify = 0.5`
-(validation cost 33.0). Written to `data/nlu/thresholds.json`
-**before** the test split was evaluated (REQ-47 freeze discipline). These are the real values for
-the `rules.yaml` POL-060 / POL-070 placeholders; `tau_fraud` (POL-040) is a fraud-score cutoff on a
-0-100 scale, **not** an intent confidence, and is **not** re-derived here.
+**Frozen pair (selected on validation, n=34):**
+`tau_escalate = 0.0`, `tau_clarify = 0.0`
+(validation cost 0.0). Written to `data/nlu/thresholds.json`
+**before** the test split was evaluated (REQ-47 freeze discipline). These are the selected values
+for the `rules.yaml` POL-060 / POL-070 placeholders; `tau_fraud` (POL-040) is a fraud-score cutoff
+on a 0-100 scale, **not** an intent confidence, and is **not** re-derived here.
+
+> **Caveat (small-sample artifact, REQ-47).** The selected pair is the degenerate `(0.0, 0.0)`: on the n=34 validation split the calibrated head makes no high-confidence errors, so 'answer everything' already costs 0 and no positive threshold can beat it. This is **not** an operational safety threshold - at `tau=0` the POL-060/POL-070 confidence bands never fire, so nothing routes to clarify/escalate on low confidence. The validation split (a slice of the 480-row team-written gold set) is too small to calibrate safety thresholds; the operational `tau_escalate`/`tau_clarify` are to be fixed on the Phase 6 held-out scenario suite (~400 cases, REQ-42), which is new data rather than borrowed from the gold set. The `rules.yaml` placeholders (0.40/0.60) remain the conservative stand-in until then.
 
 ![Cost vs threshold](figures/intent_cost_vs_threshold.png)
 _Validation cost vs tau_escalate (tau_clarify fixed at the frozen value), offline measurement._
@@ -97,8 +99,8 @@ _Validation cost vs tau_escalate (tau_clarify fixed at the frozen value), offlin
 
 | language | n (test) | MiniLM macro-F1 | TF-IDF macro-F1 |
 | --- | --- | --- | --- |
-| es | 39 | 0.4077 | 0.889 |
-| pt | 37 | 0.4586 | 0.9786 |
+| es | 35 | 0.9119 | 0.8771 |
+| pt | 34 | 0.9771 | 0.9771 |
 
 PT is synthetic (translated + a 20% native-style rewrite, provenance-tagged); per the
 `LABELING_GUIDE.md` limitation note, PT metrics are reported with sample sizes and read as
@@ -106,21 +108,13 @@ indicative, not production-grade.
 
 ## 7. Error analysis (real misclassified test examples, REQ-47)
 
-Concrete MiniLM-head misclassifications on the test split (top 8):
+Concrete MiniLM-head misclassifications on the test split (top 4):
 
 | utterance | lang | true | predicted | conf |
 | --- | --- | --- | --- | --- |
-| `Oye, ¿me checas mi saldo por favor?` | es | I1 | X1 | 0.18 |
-| `Hágame el favor y me dice mi saldo` | es | I1 | I2 | 0.319 |
-| `¿Cuánto gasté el fin de semana pasado?` | es | I2 | I1 | 0.452 |
-| `Quiero ver mis compras recientes` | es | I2 | E1 | 0.262 |
-| `¿Qué pasó con el pago que hice ayer, no se ha reflejado?` | es | I3 | E2 | 0.222 |
-| `¿Qué pasó con el pago de ayer que no se ve?` | es | I3 | I6 | 0.329 |
-| `¿Cuántos días llevo de atraso en el pago?` | es | I4 | I1 | 0.326 |
-| `¿Qué estado tiene mi tarjeta en este momento?` | es | I4 | I2 | 0.335 |
+| `Hágame el favor y me dice mi saldo` | es | I1 | OTHER | 0.176 |
+| `Quiero pasar 200.000 pesos a dólares` | es | I5 | X2 | 0.451 |
+| `Descongele mi tarjeta, la necesito usar` | es | A2 | A1 | 0.397 |
+| `kkk não entendi nada` | pt | OTHER | I3 | 0.339 |
 
-The dominant failure mode is **low-confidence confusion between neighbouring servicing intents**
-(the embedding head on the stub space keeps these near the decision boundary), which is exactly
-what the threshold bands catch: at the frozen `tau_escalate`/`tau_clarify` these low-confidence rows
-route to clarify/escalate rather than being answered, so a classifier miss degrades to a safe
-clarification or human handoff instead of an unsafe automated answer.
+The dominant failure mode is **low-confidence confusion between neighbouring servicing intents**. Note the frozen thresholds are degenerate here (see the caveat above), so these rows are currently answered rather than routed to clarify/escalate; once Phase 6 sets positive thresholds, these near-boundary rows are exactly what the bands will divert to a clarification or human handoff instead of an unsafe automated answer.
