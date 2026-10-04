@@ -82,10 +82,11 @@ def test_session_never_carries_the_raw_token() -> None:
 def test_tampered_token_is_rejected() -> None:
     service = _make_service()
     token = _authenticate(service)
-    # Flip the last character of the signature segment -> signature no longer matches.
+    # Change the first character of the signature segment (all 6 bits significant; the last
+    # base64url char of a 32-byte HMAC has padding bits, so altering it can decode identically).
     head, payload, signature = token.split(".")
-    swapped = "A" if signature[-1] != "A" else "B"
-    tampered = f"{head}.{payload}.{signature[:-1]}{swapped}"
+    swapped = "A" if signature[0] != "A" else "B"
+    tampered = f"{head}.{payload}.{swapped}{signature[1:]}"
     with pytest.raises(InvalidTokenError):
         service.verify_token(tampered)
 
