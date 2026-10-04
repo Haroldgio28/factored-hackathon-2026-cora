@@ -133,9 +133,14 @@ def main() -> int:
         print("AWS_BEARER_TOKEN_BEDROCK is empty - export your short-term key first (AWS_SETUP.md).")
         return 2
 
-    # The bearer-token path needs boto3 to NOT look up a named profile. BedrockLLMClient reads the
-    # profile from Settings (not from the environment), and `get_settings()` is lru_cached, so a
-    # late os.environ edit would not reliably take - pass an explicit profile-less Settings instead.
+    # The bearer-token path needs boto3 to NOT look up a named profile. Two independent places read
+    # it: (1) BedrockLLMClient passes Settings.aws_profile to boto3, so we pass a profile-less
+    # Settings; (2) botocore ALSO reads AWS_PROFILE straight from the process env, and load_dotenv()
+    # above just loaded the .env's empty `AWS_PROFILE=` into os.environ as "", which botocore treats
+    # as a profile named "" and fails with ProfileNotFound. So drop an empty AWS_PROFILE from the env
+    # too (verify_bedrock.py does the same). A non-empty AWS_PROFILE is left alone.
+    if not os.environ.get("AWS_PROFILE", "").strip():
+        os.environ.pop("AWS_PROFILE", None)
     settings = Settings(aws_profile="")
     model_id = settings.bedrock_model_id.strip()
     if not model_id:

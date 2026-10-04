@@ -1,0 +1,34 @@
+CORA Phase 4.2 real-Bedrock demo
+model=global.anthropic.claude-haiku-4-5-20251001-v1:0
+generated=2026-10-04T11:11:18
+======================================================================
+model=global.anthropic.claude-haiku-4-5-20251001-v1:0
+
+======================================================================
+1. Grounded ANSWER, real LLM polish (es + pt)
+======================================================================
+[es] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1359
+[es] text: Tu saldo actual es de 1.250,75 COP y tienes disponible 1.100,00 COP para usar.
+[pt] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=935
+[pt] text: Seu saldo atual é de 1.250,75 COP e você tem 1.100,00 COP disponíveis para usar.
+
+======================================================================
+2. REFUSE (money movement) + ABSTAIN_ROUTE (credit) polished (es + pt)
+======================================================================
+[refuse/es] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1061
+[refuse/es] text: No puedo realizar movimientos de dinero, transferencias ni pagos a través de este canal. ¿Hay algo más en lo que pueda asistirte?
+[refuse/pt] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1161
+[refuse/pt] text: Infelizmente, não consigo realizar movimentações de dinheiro, transferências ou pagamentos por aqui. Mas fico feliz em ajudá-lo com qualquer outra coisa que precisar!
+[abstain_route/es] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1346
+[abstain_route/es] text: Te voy a conectar con un miembro de nuestro equipo especializado que pueda revisar tu solicitud de crédito o aumento de cupo, ya que estos temas requieren una evaluación más detallada que no puedo hacer por este canal.
+[abstain_route/pt] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1171
+[abstain_route/pt] text: Infelizmente, não consigo avaliar questões de crédito ou aumento de limite por aqui. Vou encaminhá-lo para um especialista da nossa equipe que poderá analisar sua solicitação com atenção.
+
+======================================================================
+3. Figure-free polish smoke test on real model output (es)
+======================================================================
+[clarify/es] polished=True grounding_blocked=False language_blocked=False prompt_hash=1b90b2a98808 latency_ms=1074
+[clarify/es] text: Me gustaría poder ayudarte mejor. ¿Podrías explicarme con otras palabras qué es lo que necesitas? Así podré entenderte mejor.
+[clarify/es] grounding outcome: polish was figure-free (nothing to ground), so the template-equivalent text passed
+
+Demo complete. Grounding and template fallbacks are deterministic; the LLM only ever rephrased a fact-filled, PII-masked draft.
