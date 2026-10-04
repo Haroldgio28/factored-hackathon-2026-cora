@@ -1,0 +1,441 @@
+{
+  "seed": 20261003,
+  "dedup_threshold": 0.95,
+  "split_ratios": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "grouping": {
+    "key": "source scenario (scenario_id with the PT 'BR' segment stripped)",
+    "note": "REQ-31 customer_id grouping is realised as the source scenario id (design D1); an ES row and its PT translation share one group and never cross the split boundary. No real customer ids or timestamps exist in the synthetic gold set."
+  },
+  "time_ordering": {
+    "wave_column": "month",
+    "note": "The gold set was authored in two class-segregated waves (W1 servicing, W2 escalation/other), so splitting by wave alone would leave whole classes absent from a split. Class-stratification takes precedence for a usable split; the wave composition per split is reported below for transparency.",
+    "waves_per_split": {
+      "train": {
+        "2026-10-W1": 160,
+        "2026-10-W2": 160
+      },
+      "validation": {
+        "2026-10-W1": 28,
+        "2026-10-W2": 17
+      },
+      "test": {
+        "2026-10-W1": 38,
+        "2026-10-W2": 38
+      }
+    }
+  },
+  "counts": {
+    "total_rows_in": 480,
+    "total_rows_kept": 441,
+    "per_split": {
+      "train": 320,
+      "validation": 45,
+      "test": 76
+    },
+    "per_split_groups": {
+      "train": 160,
+      "validation": 25,
+      "test": 42
+    }
+  },
+  "per_split_intent": {
+    "train": {
+      "A1": 20,
+      "A2": 20,
+      "E1": 20,
+      "E2": 20,
+      "E3": 20,
+      "E4": 20,
+      "I1": 20,
+      "I2": 20,
+      "I3": 20,
+      "I4": 20,
+      "I5": 20,
+      "I6": 20,
+      "OTHER": 20,
+      "X1": 20,
+      "X2": 20,
+      "X3": 20
+    },
+    "validation": {
+      "A1": 4,
+      "A2": 3,
+      "E1": 2,
+      "E2": 3,
+      "E3": 4,
+      "E4": 1,
+      "I1": 4,
+      "I2": 4,
+      "I3": 4,
+      "I4": 3,
+      "I5": 2,
+      "I6": 4,
+      "OTHER": 4,
+      "X1": 1,
+      "X2": 2
+    },
+    "test": {
+      "A1": 3,
+      "A2": 5,
+      "E1": 6,
+      "E2": 5,
+      "E3": 4,
+      "E4": 4,
+      "I1": 6,
+      "I2": 6,
+      "I3": 6,
+      "I4": 6,
+      "I5": 2,
+      "I6": 4,
+      "OTHER": 6,
+      "X1": 6,
+      "X2": 5,
+      "X3": 2
+    }
+  },
+  "per_split_language": {
+    "train": {
+      "es": 160,
+      "pt": 160
+    },
+    "validation": {
+      "es": 23,
+      "pt": 22
+    },
+    "test": {
+      "es": 39,
+      "pt": 37
+    }
+  },
+  "thin_classes": [],
+  "missing_after_dedup": [
+    {
+      "value": "X3",
+      "column": "intent",
+      "empty_splits": [
+        "validation"
+      ]
+    }
+  ],
+  "dedup": {
+    "removed_count": 39,
+    "removed": [
+      {
+        "removed_id": "S-I5-MX-4-1",
+        "removed_split": "test",
+        "train_match_id": "S-I5-AR-4-1",
+        "cosine": 0.9693,
+        "removed_utterance": "¿Cuánto me dan por 300 dólares en pesos?",
+        "train_utterance": "¿Cuánto me dan por 200 dólares en pesos?"
+      },
+      {
+        "removed_id": "S-I5-AR-0-1",
+        "removed_split": "test",
+        "train_match_id": "S-I5-MX-0-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿A cuánto está el dólar hoy?",
+        "train_utterance": "¿A cuánto está el dólar hoy?"
+      },
+      {
+        "removed_id": "S-I5-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-I5-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Cuántos pesos son 100 dólares?",
+        "train_utterance": "¿Cuántos pesos son 100 dólares?"
+      },
+      {
+        "removed_id": "S-I6-AR-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-I6-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Cuáles son mis cuentas y tarjetas?",
+        "train_utterance": "¿Cuáles son mis cuentas y tarjetas?"
+      },
+      {
+        "removed_id": "S-A1-MX-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-A1-AR-1-1",
+        "cosine": 0.958,
+        "removed_utterance": "Por favor congela mi tarjeta de crédito",
+        "train_utterance": "Por favor congelá mi tarjeta de crédito"
+      },
+      {
+        "removed_id": "S-A2-CO-0-1",
+        "removed_split": "validation",
+        "train_match_id": "S-A2-MX-0-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quiero desbloquear mi tarjeta",
+        "train_utterance": "Quiero desbloquear mi tarjeta"
+      },
+      {
+        "removed_id": "S-E1-AR-3-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E1-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quiero reportar un movimiento que no reconozco",
+        "train_utterance": "Quiero reportar un movimiento que no reconozco"
+      },
+      {
+        "removed_id": "S-E3-AR-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-E3-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Alguien usó mi tarjeta sin permiso, es un fraude",
+        "train_utterance": "Alguien usó mi tarjeta sin permiso, es un fraude"
+      },
+      {
+        "removed_id": "S-E4-MX-0-1",
+        "removed_split": "test",
+        "train_match_id": "S-E4-AR-0-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quiero hablar con una persona, no con un bot",
+        "train_utterance": "Quiero hablar con una persona, no con un bot"
+      },
+      {
+        "removed_id": "S-E4-CO-0-1",
+        "removed_split": "test",
+        "train_match_id": "S-E4-AR-0-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quiero hablar con una persona, no con un bot",
+        "train_utterance": "Quiero hablar con una persona, no con un bot"
+      },
+      {
+        "removed_id": "S-E4-AR-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E4-MX-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Esto no me sirve, necesito que me atienda alguien real",
+        "train_utterance": "Esto no me sirve, necesito que me atienda alguien real"
+      },
+      {
+        "removed_id": "S-X1-CO-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X1-MX-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Necesito que me aumenten la línea de crédito",
+        "train_utterance": "Necesito que me aumenten la línea de crédito"
+      },
+      {
+        "removed_id": "S-X1-AR-0-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X1-MX-0-1",
+        "cosine": 0.9529,
+        "removed_utterance": "Quiero que me suban el límite de la tarjeta",
+        "train_utterance": "Quiero que me suban el límite de mi tarjeta"
+      },
+      {
+        "removed_id": "S-X2-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X2-CO-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quiero pagar la tarjeta desde mi cuenta",
+        "train_utterance": "Quiero pagar la tarjeta desde mi cuenta"
+      },
+      {
+        "removed_id": "S-X3-MX-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X3-CO-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Cómo abro una cuenta nueva?",
+        "train_utterance": "¿Cómo abro una cuenta nueva?"
+      },
+      {
+        "removed_id": "S-X3-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X3-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Cuál es el horario de atención del banco?",
+        "train_utterance": "¿Cuál es el horario de atención del banco?"
+      },
+      {
+        "removed_id": "S-X3-AR-2-1",
+        "removed_split": "test",
+        "train_match_id": "S-X3-CO-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Cómo abro una cuenta nueva?",
+        "train_utterance": "¿Cómo abro una cuenta nueva?"
+      },
+      {
+        "removed_id": "S-X3-AR-3-1",
+        "removed_split": "test",
+        "train_match_id": "S-X3-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "¿Tienen una app para el celular?",
+        "train_utterance": "¿Tienen una app para el celular?"
+      },
+      {
+        "removed_id": "S-I4-BR-CO-4-1",
+        "removed_split": "validation",
+        "train_match_id": "S-I4-BR-MX-4-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quando vence o meu cartão?",
+        "train_utterance": "Quando vence o meu cartão?"
+      },
+      {
+        "removed_id": "S-I5-BR-MX-4-1",
+        "removed_split": "test",
+        "train_match_id": "S-I5-BR-AR-4-1",
+        "cosine": 0.9754,
+        "removed_utterance": "Quanto eu recebo por 300 dólares em reais?",
+        "train_utterance": "Quanto eu recebo por 200 dólares em reais?"
+      },
+      {
+        "removed_id": "S-I5-BR-CO-2-1",
+        "removed_split": "test",
+        "train_match_id": "S-I5-BR-MX-2-1",
+        "cosine": 0.9624,
+        "removed_utterance": "Quero converter 200 reais em dólares",
+        "train_utterance": "Quero converter 500 reais em dólares"
+      },
+      {
+        "removed_id": "S-I5-BR-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-I5-BR-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quantos reais são 100 dólares?",
+        "train_utterance": "Quantos reais são 100 dólares?"
+      },
+      {
+        "removed_id": "S-I6-BR-AR-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-I6-BR-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quais são as minhas contas e cartões?",
+        "train_utterance": "Quais são as minhas contas e cartões?"
+      },
+      {
+        "removed_id": "S-A1-BR-MX-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-A1-BR-CO-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Por favor, congele o meu cartão de crédito",
+        "train_utterance": "Por favor, congele o meu cartão de crédito"
+      },
+      {
+        "removed_id": "S-A1-BR-CO-3-1",
+        "removed_split": "test",
+        "train_match_id": "S-A1-BR-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "Bloqueie o meu cartão, acho que o perdi",
+        "train_utterance": "Bloqueie o meu cartão, acho que o perdi"
+      },
+      {
+        "removed_id": "S-A2-BR-MX-2-1",
+        "removed_split": "test",
+        "train_match_id": "S-A2-BR-AR-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Reative o meu cartão de crédito",
+        "train_utterance": "Reative o meu cartão de crédito"
+      },
+      {
+        "removed_id": "S-E1-BR-AR-3-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E1-BR-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quero reportar uma movimentação que eu não reconheço",
+        "train_utterance": "Quero reportar uma movimentação que eu não reconheço"
+      },
+      {
+        "removed_id": "S-E2-BR-MX-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E2-BR-AR-1-1",
+        "cosine": 0.9546,
+        "removed_utterance": "Estou muito irritado, faz dias que espero uma resposta",
+        "train_utterance": "Estou muito irritado, faz dias que espero resposta"
+      },
+      {
+        "removed_id": "S-E2-BR-CO-3-1",
+        "removed_split": "test",
+        "train_match_id": "S-E2-BR-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "O atendimento na agência foi péssimo, quero reclamar",
+        "train_utterance": "O atendimento na agência foi péssimo, quero reclamar"
+      },
+      {
+        "removed_id": "S-E3-BR-AR-1-1",
+        "removed_split": "test",
+        "train_match_id": "S-E3-BR-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Alguém usou o meu cartão sem permissão, é uma fraude",
+        "train_utterance": "Alguém usou o meu cartão sem permissão, é uma fraude"
+      },
+      {
+        "removed_id": "S-E4-BR-CO-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E4-BR-AR-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Me passe para um atendente humano, por favor",
+        "train_utterance": "Me passe para um atendente humano, por favor"
+      },
+      {
+        "removed_id": "S-E4-BR-AR-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-E4-BR-MX-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Isso não me serve, preciso ser atendido por alguém de verdade",
+        "train_utterance": "Isso não me serve, preciso ser atendido por alguém de verdade"
+      },
+      {
+        "removed_id": "S-X1-BR-CO-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X1-BR-MX-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Preciso que aumentem o meu limite de crédito",
+        "train_utterance": "Preciso que aumentem o meu limite de crédito"
+      },
+      {
+        "removed_id": "S-X2-BR-MX-3-1",
+        "removed_split": "test",
+        "train_match_id": "S-X2-BR-AR-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "Pague a minha conta de luz com o meu saldo",
+        "train_utterance": "Pague a minha conta de luz com o meu saldo"
+      },
+      {
+        "removed_id": "S-X2-BR-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X2-BR-CO-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Quero pagar o cartão com a minha conta",
+        "train_utterance": "Quero pagar o cartão com a minha conta"
+      },
+      {
+        "removed_id": "S-X3-BR-MX-2-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X3-BR-CO-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Como eu abro uma conta nova?",
+        "train_utterance": "Como eu abro uma conta nova?"
+      },
+      {
+        "removed_id": "S-X3-BR-AR-1-1",
+        "removed_split": "validation",
+        "train_match_id": "S-X3-BR-MX-1-1",
+        "cosine": 1.0,
+        "removed_utterance": "Qual é o horário de atendimento do banco?",
+        "train_utterance": "Qual é o horário de atendimento do banco?"
+      },
+      {
+        "removed_id": "S-X3-BR-AR-2-1",
+        "removed_split": "test",
+        "train_match_id": "S-X3-BR-CO-2-1",
+        "cosine": 1.0,
+        "removed_utterance": "Como eu abro uma conta nova?",
+        "train_utterance": "Como eu abro uma conta nova?"
+      },
+      {
+        "removed_id": "S-X3-BR-AR-3-1",
+        "removed_split": "test",
+        "train_match_id": "S-X3-BR-MX-3-1",
+        "cosine": 1.0,
+        "removed_utterance": "Vocês têm um aplicativo para o celular?",
+        "train_utterance": "Vocês têm um aplicativo para o celular?"
+      }
+    ]
+  }
+}

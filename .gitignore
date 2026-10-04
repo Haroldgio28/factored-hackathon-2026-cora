@@ -187,6 +187,11 @@ Docs/
 # Downloaded dataset (large, derived) - anchored to the repo root so scripts/data/ is still versioned
 /data/
 *.parquet
+# ...except the committed NLU evidence (small, team-written gold set + frozen artifacts, Phase 3).
+# Re-include each ancestor dir before its contents; model weights are referenced, never stored.
+!/data/
+/data/*
+!/data/nlu/
 
 # Workflow/agent scratch directory (orchestration tooling, not project source)
 .agents/

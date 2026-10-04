@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "CORA Phase 3 - NLU & learned component data flow",
+    "output": "documentation/diagrams/phase3-nlu-dataflow.html",
+    "viewBox": [1069, 640],
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "gold-to-splits", "label": "Gold to splits", "focus": ["gold_es", "gold_pt", "splits", "train", "heldout"], "note": "Team-written es/pt gold set, leakage-safe group+time split with 0.95 dedup." },
+      { "id": "learn-freeze", "label": "Learn and freeze", "focus": ["train", "classifier", "thresholds", "report"], "note": "Calibrated MiniLM+LogReg head (TF-IDF comparison alongside), cost-matrix thresholds frozen on validation." },
+      { "id": "serve-boundary", "label": "Serve to policy", "focus": ["turn", "nlu_runtime", "screens", "policy"], "note": "At serve time the learned signal only fills three PolicyInput fields; the deterministic engine decides." }
+    ]
+  },
+  "stages": [
+    { "label": "Gold data (team-written)" },
+    { "label": "Leakage-safe split" },
+    { "label": "Learn & compare" },
+    { "label": "Freeze evidence" },
+    { "label": "Serve -> policy" }
+  ],
+  "nodes": [
+    { "id": "gold_es", "type": "database", "label": "gold.tsv", "sublabel": "240 ES, MX/CO/AR", "stage": 0, "row": 0, "tag": "kappa 0.733" },
+    { "id": "gold_pt", "type": "database", "label": "gold_pt.tsv", "sublabel": "240 BR, translated+native", "stage": 0, "row": 2, "tag": "provenance" },
+    { "id": "splits", "type": "backend", "label": "make_splits", "sublabel": "scenario groups, 0.95 dedup", "stage": 1, "row": 2, "tag": "REQ-31", "width": 150 },
+    { "id": "train", "type": "database", "label": "train split", "sublabel": "320 rows, 15/16 classes", "stage": 1, "row": 0, "tag": "earlier waves" },
+    { "id": "classifier", "type": "backend", "label": "MiniLM + LogReg", "sublabel": "calibrated + TF-IDF compare", "stage": 2, "row": 0, "tag": "sigmoid (D2)", "width": 150 },
+    { "id": "heldout", "type": "database", "label": "val + test", "sublabel": "45 + 76 rows", "stage": 2, "row": 3, "tag": "later waves" },
+    { "id": "head", "type": "database", "label": "intent_head.joblib", "sublabel": "head only, 51 KB", "stage": 3, "row": 0, "tag": "no weights" },
+    { "id": "report", "type": "database", "label": "model_card + report", "sublabel": "offline (REQ-47)", "stage": 3, "row": 1, "tag": "evidence" },
+    { "id": "thresholds", "type": "security", "label": "thresholds.json", "sublabel": "cost-matrix, frozen", "stage": 3, "row": 3, "tag": "tau_e<=tau_c" },
+    { "id": "turn", "type": "frontend", "label": "Customer turn", "sublabel": "es / pt utterance", "stage": 4, "row": 0, "tag": "untrusted text" },
+    { "id": "screens", "type": "security", "label": "mask / lang / injection", "sublabel": "PII masked, fail-closed", "stage": 4, "row": 1, "tag": "defense in depth", "width": 150 },
+    { "id": "nlu_runtime", "type": "backend", "label": "classify intent", "sublabel": "frozen head + thresholds", "stage": 4, "row": 2, "tag": "proposes only" },
+    { "id": "policy", "type": "backend", "label": "PolicyEngine", "sublabel": "deterministic rules.yaml", "stage": 4, "row": 3, "tag": "decides" }
+  ],
+  "flows": [
+    { "id": "es-in", "from": "gold_es", "to": "splits", "label": "ES utterances", "classification": "team-written", "variant": "emphasis" },
+    { "id": "pt-in", "from": "gold_pt", "to": "splits", "label": "PT mirror 1:1", "classification": "translated + native", "variant": "default", "route": "straight", "labelAt": [198, 428] },
+    { "id": "to-train", "from": "splits", "to": "train", "label": "train assignment", "classification": "grouped", "variant": "emphasis", "labelAt": [315, 428] },
+    { "id": "train-fit", "from": "train", "to": "classifier", "label": "fit + calibrate", "classification": "offline", "variant": "emphasis", "route": "straight", "labelDy": -22 },
+    { "id": "train-heldout", "from": "train", "to": "heldout", "label": "val + test rows", "classification": "grouped", "variant": "default", "labelDy": 22 },
+    { "id": "clf-head", "from": "classifier", "to": "head", "label": "persist", "classification": "joblib", "variant": "default", "route": "straight", "labelDy": -22 },
+    { "id": "clf-report", "from": "classifier", "to": "report", "label": "metrics", "classification": "measured", "variant": "default", "labelDy": 22 },
+    { "id": "val-thresh", "from": "heldout", "to": "thresholds", "label": "select on validation", "classification": "cost matrix", "variant": "security", "labelAt": [638, 440] },
+    { "id": "head-serve", "from": "head", "to": "nlu_runtime", "label": "load head", "classification": "runtime", "variant": "emphasis" },
+    { "id": "thresh-serve", "from": "thresholds", "to": "nlu_runtime", "label": "load thresholds", "classification": "runtime", "variant": "security", "labelDy": -34 },
+    { "id": "turn-screen", "from": "turn", "to": "screens", "label": "raw turn", "classification": "untrusted", "variant": "security", "labelAt": [960, 200] },
+    { "id": "screen-clf", "from": "screens", "to": "nlu_runtime", "label": "clean + language", "classification": "data only", "variant": "default", "labelAt": [960, 314] },
+    { "id": "clf-policy", "from": "nlu_runtime", "to": "policy", "label": "intent + confidence + injection_hit", "classification": "3 PolicyInput fields", "variant": "emphasis", "labelAt": [960, 428] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Primary learning path (REQ-31)",
+      "items": [
+        "Team-written es/pt gold set (transcripts seed-only, F7) feeds one leakage-safe split",
+        "Groups split by source scenario and authoring wave, with cosine>0.95 cross-split dedup",
+        "MiniLM+LogReg head trains on train; a TF-IDF char-ngram head is the no-cross-lingual comparison"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Frozen before test (REQ-47)",
+      "items": [
+        "Cost-matrix thresholds selected on validation and frozen before the test split is touched",
+        "tau_escalate <= tau_clarify matches the engine's POL-060-before-POL-070 band order",
+        "All numbers are offline measurement; the MiniLM-head run is stub-provenance here, TF-IDF is real"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Learned proposes, policy decides",
+      "items": [
+        "PII is masked, then language id and the injection screen run fail-closed at serve time",
+        "The classifier fills exactly three PolicyInput fields: intent, confidence, injection_hit",
+        "The deterministic PolicyEngine makes the decision; the model never does (security steering)"
+      ]
+    }
+  ]
+}
