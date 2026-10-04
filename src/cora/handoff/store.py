@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import json
 import os
-import uuid
 from pathlib import Path
+
+from cora.tools.handoff_store import new_case_id
 
 # Runtime location, consistent with the card overlay and the pipeline state. `data/` is
 # gitignored (`/data/` in `.gitignore`), so this file is runtime-only and never committed.
@@ -51,9 +52,13 @@ class JsonHandoffStore:
         tmp.write_text(json.dumps(cases, indent=1, default=str), encoding="utf-8")
         os.replace(tmp, self._path)
 
-    def create(self, package: dict[str, object]) -> str:
-        """Persist a handoff package and return its opaque case id (`CASE-...`)."""
-        case_id = "CASE-" + uuid.uuid4().hex[:12].upper()
+    def create(self, package: dict[str, object], *, case_id: str | None = None) -> str:
+        """Persist a handoff package and return its opaque case id (`CASE-...`).
+
+        `case_id` lets a caller reserve the id before the durable write (task 5.1: the handoff
+        span and case id are finalized on the turn and traced BEFORE this persist runs).
+        """
+        case_id = case_id or new_case_id()
         cases = self._load()
         cases[case_id] = dict(package)
         self._save(cases)

@@ -20,6 +20,16 @@ def _priority_badge(priority: str) -> str:
     return "🔴 HIGH" if priority == "high" else "⚪ normal"
 
 
+def trace_label(trace_ref: object) -> str:
+    """Format a package's `trace_ref` (task 5.1) into the read-only line the console shows.
+
+    Pure so the UI retrieval path is testable without Streamlit. An empty/missing id reads as a
+    plain "none" rather than a blank line, so a human sees the turn simply had no trace id.
+    """
+    trace_ref = str(trace_ref or "").strip()
+    return f"Trace id: {trace_ref}" if trace_ref else "Trace id: (none)"
+
+
 def _render_package(st: Any, case_id: str, package: dict[str, object]) -> None:
     """Render one handoff package's REQ-16 fields read-only (no editing, no actions)."""
     st.subheader(f"Case {case_id}")
@@ -53,6 +63,7 @@ def _render_package(st: Any, case_id: str, package: dict[str, object]) -> None:
     _render_list(st, "Unresolved questions", package.get("unresolved_questions"))
 
     st.caption(f"Transcript reference (session): {package.get('transcript_ref', '')}")
+    st.caption(trace_label(package.get("trace_ref")))
     st.caption(f"Created at: {package.get('created_at', '')}")
 
 

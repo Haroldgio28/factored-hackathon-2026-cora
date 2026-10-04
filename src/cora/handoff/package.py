@@ -76,6 +76,10 @@ class HandoffPackage(BaseModel):
     reason: HandoffReason
     priority: str = Priority.NORMAL
     transcript_ref: str
+    # Pointer to this turn's JSONL trace (task 5.1, REQ-39): the stable per-turn `trace_id` so a
+    # human agent (and the UI) can pull the explainable trace alongside the masked transcript.
+    # Optional and opaque; it carries no PII. Empty when no trace id was threaded in.
+    trace_ref: str = ""
     created_at: datetime
 
     def to_store_dict(self) -> dict[str, object]:
@@ -129,6 +133,7 @@ def build_package(
     priority: str | None = None,
     unresolved_questions: list[str] | None = None,
     actions_taken: list[str] | None = None,
+    trace_ref: str = "",
     now: datetime | None = None,
 ) -> HandoffPackage:
     """Assemble the REQ-16 handoff package deterministically from verified facts (never the LLM).
@@ -137,7 +142,8 @@ def build_package(
     and `supporting_transactions` are read out of THIS turn's OK tool `Result`s (their source refs
     copied verbatim). `priority` defaults to `high` for a fraud escalation (POL-040) and `normal`
     otherwise. `unresolved_questions`/`actions_taken` are passed in by the escalating node (e.g. the
-    dispute slot-filler) since they are turn context, not a tool fact.
+    dispute slot-filler) since they are turn context, not a tool fact. `trace_ref` is the turn's
+    opaque `trace_id` (task 5.1) so a human can pull the JSONL trace; it carries no PII.
     """
     now = now or datetime.now(UTC)
     verbatim = state.turn_history[-1].utterance_masked if state.turn_history else ""
@@ -160,5 +166,6 @@ def build_package(
         reason=reason,
         priority=resolved_priority,
         transcript_ref=state.jti,
+        trace_ref=trace_ref,
         created_at=now,
     )

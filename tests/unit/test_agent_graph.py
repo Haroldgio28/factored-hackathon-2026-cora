@@ -288,3 +288,36 @@ def test_each_turn_records_trace_spans(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.spans, "every node must leave a trace span"
     assert result.spans[-1].node == "Handoff"
     assert all(span.node for span in result.spans)
+
+
+# -- stable per-turn trace id (task 5.1, REQ-39) ---------------------------------------
+
+
+def test_each_turn_has_a_stable_unique_trace_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock, owned={"PRD-1"})
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+    state = orch._store.require(session)  # noqa: SLF001
+    state.referenced_product_id = "PRD-1"
+
+    first = orch.step(session, "cual es mi saldo")
+    second = orch.step(session, "cual es mi saldo")
+    # 32-char uuid4 hex, present on every turn, and different between turns.
+    assert len(first.trace_id) == 32 and first.trace_id.isalnum()
+    assert len(second.trace_id) == 32
+    assert first.trace_id != second.trace_id
+
+
+def test_handoff_turn_threads_trace_id_into_the_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock)
+    _patch_intent(monkeypatch, Intent.E2, 0.99)
+
+    result = orch.step(session, "quiero poner una queja")
+    assert result.node == "Handoff"
+    # The package a human/UI reads carries the SAME trace id as the turn (5.1 end-to-end tie).
+    assert result.handoff_package is not None
+    assert result.handoff_package.trace_ref == result.trace_id
+    assert result.trace_id

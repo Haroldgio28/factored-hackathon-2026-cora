@@ -38,6 +38,7 @@ Every node records a trace span (design section 4 "every node writes a trace spa
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -57,6 +58,7 @@ from cora.handoff.package import HandoffPackage, build_package
 from cora.identity import Session
 from cora.nlu import entities as nlu_entities
 from cora.nlu import injection, language
+from cora.obs.tracing import export_turn
 from cora.policy import (
     Decision,
     Intent,
@@ -130,14 +132,24 @@ class TurnResult:
     `node` is the design-section-4 node reached; `decision`/`rule_id` are the policy outcome that
     routed there (`None` only before the policy runs, e.g. the re-auth path). `message` is a
     short, non-sensitive status string; customer-facing text is produced by the 4.2 generator,
-    not here. `spans` is the ordered trace of nodes visited this turn.
+    not here. `spans` is the ordered trace of nodes visited this turn. `trace_id` is a stable
+    per-turn id (stdlib uuid4 hex) the JSONL exporter, the handoff package and the UI all carry
+    so one turn is explainable end to end (task 5.1, REQ-39); it holds no PII.
     """
 
     node: str
+    trace_id: str = ""
     decision: Decision | None = None
     rule_id: str | None = None
     rules_version: str | None = None
     intent: Intent | None = None
+    # Execution-record fields for the REQ-39 trace: the masked input (never raw), the session
+    # language this turn ran in, and the intent confidence the policy decided on. Kept on the
+    # turn (not the span) because they are turn-level, and PII-safe (`masked_input` is already
+    # `mask_pii`-ed before it is set; the exporter masks again as defence in depth).
+    masked_input: str | None = None
+    language: str | None = None
+    intent_confidence: float | None = None
     reference: Reference | None = None
     proposal_rejected: bool = False
     message: str | None = None
@@ -173,12 +185,16 @@ class Orchestrator:
         tool_layer_factory: Callable[[Session], ToolLayer],
         llm: LLMClient | None = None,
         clock: Callable[[], datetime] = _utcnow,
+        settings=None,  # noqa: ANN001 - a cora.settings.Settings; injected in tests for the trace dir
     ) -> None:
         self._policy = policy
         self._store = store
         self._tool_layer_factory = tool_layer_factory
         self._llm = llm
         self._clock = clock
+        # The trace exporter reads `settings.trace_dir`; `None` falls back to `get_settings()`
+        # inside the exporter (the production default). Injected in tests to redirect the file.
+        self._settings = settings
 
     # -- public entry point ------------------------------------------------------------
 
@@ -199,11 +215,17 @@ class Orchestrator:
         engine cannot see in one turn (Very-Negative sentiment, a tool that keeps failing); they
         feed `update_turn_signals`, which can escalate on a streak (REQ-15, task 4.5).
         """
+        # One stable id per turn (stdlib uuid4). Set on EVERY return path below so the trace, the
+        # handoff package pointer and the UI all carry the same id (task 5.1, REQ-39). It is a
+        # plain opaque hex string and never derived from user text, so it leaks no PII.
+        trace_id = uuid.uuid4().hex
+
         now = self._clock()
         # 1. Expiry / fail-closed re-auth. An expired or absent session discards all state.
         if now >= session.expires_at:
             self._store.discard(session.jti)
-            return self._expired()
+            result = self._expired()
+            return self._finish(result, trace_id)
 
         state = self._store.require(session)
 
@@ -212,7 +234,10 @@ class Orchestrator:
         #     on an explicit affirmative; the policy engine is not consulted for a reply.
         if state.pending_action is not None:
             masked = mask_pii(utterance)
-            return self._resolve_pending(session, state, masked)
+            result = self._resolve_pending(session, state, masked)
+            result.masked_input = masked
+            result.language = state.language
+            return self._finish(result, trace_id)
 
         # 2. Language: detect on the raw text, but never let a low-confidence guess flip the
         #    session language (keep it; the generator confirms). Empty/low-confidence -> keep.
@@ -244,7 +269,12 @@ class Orchestrator:
         # 6. Decide + dispatch. The decision is the policy's, never the model's.
         decision = self._policy.decide(policy_input)
         result = _EDGES[decision.decision](self, state, decision)
+        result.trace_id = trace_id
         result.intent = intent
+        # Turn-level execution-record fields for the REQ-39 trace (masked input only).
+        result.masked_input = masked
+        result.language = state.language
+        result.intent_confidence = confidence
         result.reference = reference
         result.proposal_rejected = decision.proposal_rejected
 
@@ -270,13 +300,40 @@ class Orchestrator:
         )
         if result.node not in ("Escalate", "Handoff") and streak_reason is not None:
             result = _node_handoff(self, state, decision)
+            result.trace_id = trace_id
             result.intent = intent
+            result.masked_input = masked
+            result.language = state.language
+            result.intent_confidence = confidence
             result.message = f"{streak_reason.value}: escalation streak"
 
         # 8. On any escalation (policy or streak), build + persist the REQ-16 handoff package from
-        #    the verified facts gathered this turn and run the E1 dispute intake (REQ-17).
+        #    the verified facts gathered this turn and run the E1 dispute intake (REQ-17). The
+        #    turn `trace_id` is threaded into the package (as `trace_ref`) so a human agent can
+        #    pull the trace. The package is persisted HERE, synchronously (its pre-5.1 timing):
+        #    persisting a handoff does not depend on the trace file having been written - the
+        #    trace is a best-effort audit artifact, not a precondition of the handoff.
         if result.node == "Handoff":
             self._handoff(session, state, result, tools, intent, reference, decision, tool_results)
+        return self._finish(result, trace_id)
+
+    def _finish(self, result: TurnResult, trace_id: str) -> TurnResult:
+        """Emit the one REQ-39 trace record (best-effort), then return the real turn result.
+
+        Every return path of `step` funnels through here, so a real turn emits exactly one JSONL
+        record on the happy path - not only the test calls. The export is BEST-EFFORT observability
+        (security steering P5, "everything is a record"): a trace is an audit artifact, never a
+        gate on an already-verified turn. A telemetry sink must never crash or alter a turn, so a
+        write failure (an `OSError`, or any broad `Exception`) is logged and SWALLOWED and the
+        real, unmodified `result` is returned - the verified card action still happened, the
+        confirmation prompt was still delivered, and the `trace_id` stays on the result (the id is
+        valid and correlates the handoff/UI even if this one JSONL append failed).
+        """
+        result.trace_id = trace_id
+        try:
+            export_turn(result, settings=self._settings)
+        except Exception:  # noqa: BLE001 - a best-effort telemetry sink must never fail a turn
+            logger.warning("trace export failed for turn %s; continuing", trace_id, exc_info=True)
         return result
 
     # -- understand helpers (deterministic) --------------------------------------------
@@ -494,6 +551,10 @@ class Orchestrator:
         text), the reason and card-in-possession, and offers a freeze when fraud is suspected -
         but the customer-facing copy stays the handoff acknowledgement, so no outcome is promised
         (REQ-17). The full package is written to the durable handoff store for the agent console.
+
+        The turn's `trace_id` is threaded in as the package `trace_ref` so a human agent can pull
+        the trace; it is just the id string and does not require the trace file to exist (the trace
+        is a best-effort audit artifact, written separately in `_finish`).
         """
         reason = _handoff_reason(intent, decision)
         unresolved: list[str] = []
@@ -522,6 +583,7 @@ class Orchestrator:
             priority=decision.priority,
             unresolved_questions=unresolved,
             actions_taken=actions,
+            trace_ref=result.trace_id,
             now=self._clock(),
         )
         case_id = tools.handoff_store.create(package.to_store_dict())
