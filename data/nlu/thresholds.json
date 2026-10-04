@@ -1,9 +1,9 @@
 {
-  "tau_escalate": 0.2,
-  "tau_clarify": 0.5,
+  "tau_escalate": 0.0,
+  "tau_clarify": 0.0,
   "selected_on": "validation",
-  "validation_cost": 33.0,
-  "n_validation": 45,
+  "validation_cost": 0.0,
+  "n_validation": 34,
   "cost_matrix": {
     "unsafe_answer": 100.0,
     "unnecessary_escalate": 10.0,

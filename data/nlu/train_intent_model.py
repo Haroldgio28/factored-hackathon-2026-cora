@@ -281,6 +281,45 @@ def _write_report(card: dict, choice, errors: list[dict], out: Path) -> None:
         f">> clarification ({cost.clarify:.0f}) "
         f">> correct answer ({cost.correct_answer:.0f})**"
     )
+
+    # Honesty guard (REQ-47 / evaluation steering): a degenerate (0.0, 0.0) pair means the sweep
+    # found zero unsafe answers on the small validation split, so "answer everything" is cost-free
+    # there. That is a small-sample artifact, NOT an operational safety threshold - with tau=0 the
+    # confidence bands POL-060/POL-070 never fire. Flag it loudly rather than present it as tuned.
+    degenerate = choice.tau_escalate == 0.0 and choice.tau_clarify == 0.0
+    threshold_caveat = (
+        (
+            "\n> **Caveat (small-sample artifact, REQ-47).** The selected pair is the degenerate "
+            f"`(0.0, 0.0)`: on the n={res['thresholds']['n_validation']} validation split the "
+            "calibrated head makes no high-confidence errors, so 'answer everything' already costs "
+            "0 and no positive threshold can beat it. This is **not** an operational safety "
+            "threshold - at `tau=0` the POL-060/POL-070 confidence bands never fire, so nothing "
+            "routes to clarify/escalate on low confidence. The validation split (a slice of the "
+            "480-row team-written gold set) is too small to calibrate safety thresholds; the "
+            "operational `tau_escalate`/`tau_clarify` are to be fixed on the Phase 6 held-out "
+            "scenario suite (~400 cases, REQ-42), which is new data rather than borrowed from the "
+            "gold set. The `rules.yaml` placeholders (0.40/0.60) remain the conservative stand-in "
+            "until then.\n"
+        )
+        if degenerate
+        else ""
+    )
+
+    # The error-analysis closing paragraph must match the ACTUAL frozen thresholds: with a
+    # degenerate pair the bands do NOT catch low-confidence rows, so do not claim they do.
+    error_closing = (
+        "The dominant failure mode is **low-confidence confusion between neighbouring servicing "
+        "intents**. Note the frozen thresholds are degenerate here (see the caveat above), so these "
+        "rows are currently answered rather than routed to clarify/escalate; once Phase 6 sets "
+        "positive thresholds, these near-boundary rows are exactly what the bands will divert to a "
+        "clarification or human handoff instead of an unsafe automated answer."
+        if degenerate
+        else "The dominant failure mode is **low-confidence confusion between neighbouring servicing "
+        "intents**, which is exactly what the threshold bands catch: at the frozen "
+        "`tau_escalate`/`tau_clarify` these low-confidence rows route to clarify/escalate rather "
+        "than being answered, so a classifier miss degrades to a safe clarification or human "
+        "handoff instead of an unsafe automated answer."
+    )
     es_lang, pt_lang = emb["by_language"]["es"], emb["by_language"]["pt"]
     es_tfidf, pt_tfidf = tfidf["by_language"]["es"], tfidf["by_language"]["pt"]
     lang_table = _md_table(
@@ -369,10 +408,10 @@ cannot express.
 **Frozen pair (selected on validation, n={res["thresholds"]["n_validation"]}):**
 `tau_escalate = {choice.tau_escalate}`, `tau_clarify = {choice.tau_clarify}`
 (validation cost {res["thresholds"]["validation_cost"]}). Written to `data/nlu/thresholds.json`
-**before** the test split was evaluated (REQ-47 freeze discipline). These are the real values for
-the `rules.yaml` POL-060 / POL-070 placeholders; `tau_fraud` (POL-040) is a fraud-score cutoff on a
-0-100 scale, **not** an intent confidence, and is **not** re-derived here.
-
+**before** the test split was evaluated (REQ-47 freeze discipline). These are the selected values
+for the `rules.yaml` POL-060 / POL-070 placeholders; `tau_fraud` (POL-040) is a fraud-score cutoff
+on a 0-100 scale, **not** an intent confidence, and is **not** re-derived here.
+{threshold_caveat}
 ![Cost vs threshold](figures/intent_cost_vs_threshold.png)
 _Validation cost vs tau_escalate (tau_clarify fixed at the frozen value), offline measurement._
 
@@ -390,11 +429,7 @@ Concrete MiniLM-head misclassifications on the test split (top {len(errors)}):
 
 {error_table}
 
-The dominant failure mode is **low-confidence confusion between neighbouring servicing intents**
-(the embedding head on the stub space keeps these near the decision boundary), which is exactly
-what the threshold bands catch: at the frozen `tau_escalate`/`tau_clarify` these low-confidence rows
-route to clarify/escalate rather than being answered, so a classifier miss degrades to a safe
-clarification or human handoff instead of an unsafe automated answer.
+{error_closing}
 """
     out.write_text(md, encoding="utf-8")
 
