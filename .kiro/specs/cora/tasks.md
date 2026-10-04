@@ -131,8 +131,9 @@ Rules for every task:
 
 ## Phase 4 - Agent orchestration (Days 5-7)
 
-- [ ] **4.1 LangGraph state machine**
+- [x] **4.1 LangGraph-equivalent state machine**
   - Nodes/edges of design §4; session state store; reference resolution across turns.
+  - Done: `src/cora/agent/state.py` (`SessionState`/`SessionStore`: the REQ-06 per-session fields keyed by `jti`, fail-closed discard on expiry), `src/cora/agent/references.py` (`resolve_reference`: deterministic cross-turn "esa tarjeta"/"o último"/"la segunda" from state, never the LLM), `src/cora/agent/graph.py` (`Orchestrator`: one function per §4 node + a `_EDGES: {Decision: node}` table; `step()` runs expire-check → detect language → `mask_pii` → injection screen → classify → extract entities → resolve reference → typed `PolicyInput` from `ToolLayer` ownership → `PolicyEngine.decide` → dispatch; every node writes a `TraceSpan`; REQ-07 two-failed-clarifications→escalate(E4) guard; REQ-13 out-of-allow-list proposal rejected, rules still decide). Implemented as a thin stdlib dispatcher, NOT the `langgraph` runtime (unavailable on this host; see ADR-004 Phase-4 deviation in `documentation/DECISIONS.md`). Evidence: `tests/unit/test_agent_graph.py`, `tests/unit/test_references.py`. `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest` all green.
   - _Requirements: REQ-06, REQ-07, REQ-13_
 - [ ] **4.2 Response generation + templates**
   - Versioned prompts (hash in trace), es/pt templates for every decision, PII masking before LLM.

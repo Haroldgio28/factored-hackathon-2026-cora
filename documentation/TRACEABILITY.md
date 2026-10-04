@@ -13,9 +13,9 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC | Obligation (short) | REQ | Task | Evidence | Status |
 |---|---|---|---|---|---|
 | SRC-01 | Working AI-first system | 04, 49 | 5.3, 5.4 | API + demo UI | Planned |
-| SRC-02 | Understand complex interactions | 06 | 4.1 | multi-turn scenarios | Planned |
+| SRC-02 | Understand complex interactions | 06 | 4.1 | state machine + session store `tests/unit/test_agent_graph.py` (edges); multi-turn eval scenarios pending | Partial |
 | SRC-03 | Use data/tools securely | 10, 12 | 2.1, 2.2 | `tests/unit/test_identity.py` (authN) + `tests/unit/test_tools.py` (authZ, session-injected `customer_id`) | Done |
-| SRC-04 | Complete service workflows | 04 | 4.1 | state machine + scenarios | Planned |
+| SRC-04 | Complete service workflows | 04 | 4.1 | §4 state machine `src/cora/agent/graph.py` + `tests/unit/test_agent_graph.py` (every edge); node bodies for 4.2/4.4/4.5/4.6 pending | Partial |
 | SRC-05 | Involve humans when needed | 15, 16 | 4.5 | handoff packages | Planned |
 | SRC-06 | Focused problem, end-to-end | 01, 04 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
 | SRC-07 | Data explains why it matters | 01 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
@@ -35,8 +35,8 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-21 | Report data/language limitations | 19, 52 | 7.4 | LIMITATIONS section | Planned |
 | SRC-22 | Analyze reasons, demand, quality, constraints | 01 | 1.8 | EDA + data_quality.md | Partial |
 | SRC-23 | Prioritize workflow; define outcomes | 01, 02 | 1.8, 7.3 | outcomes table | Partial |
-| SRC-24 | Conversational context | 06 | 4.1 | context tests | Planned |
-| SRC-25 | Clarify ambiguity | 07 | 4.1 | clarification scenarios | Planned |
+| SRC-24 | Conversational context | 06 | 4.1 | `src/cora/agent/state.py` (per-session store) + `src/cora/agent/references.py` (deterministic cross-turn resolution); `tests/unit/test_references.py`, `tests/unit/test_agent_graph.py` | Done |
+| SRC-25 | Clarify ambiguity | 07 | 4.1 | POL-070 clarify + two-strikes→escalate(E4) guard in `src/cora/agent/graph.py`; `tests/unit/test_agent_graph.py::test_low_confidence_clarifies_then_escalates_after_two` | Done |
 | SRC-26 | Grounded factual answers | 08, 28 | 4.3 | grounding tests | Planned |
 | SRC-27 | Use tools when they serve | 09 | 2.2, 4.4 | tool layer `tests/unit/test_tools.py` (2.2 done); agent-wired traces pending (4.4) | Partial |
 | SRC-28 | Report only verified actions | 09 | 2.3, 4.4 | `tests/unit/test_card_overlay.py` read-back + fail-closed (2.3 done); agent flow pending (4.4) | Partial |
