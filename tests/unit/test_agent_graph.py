@@ -28,7 +28,7 @@ from cora.agent.graph import Orchestrator
 from cora.agent.state import SessionStore
 from cora.identity import MockIdentityService, Session
 from cora.policy import Decision, Intent, PolicyEngine, Thresholds
-from cora.tools import Result, Status
+from cora.tools import InMemoryHandoffStore, Result, Status
 from cora.tools.models import BalanceData, CardDetailsData
 
 _KEY = "test-signing-key-not-a-real-secret"
@@ -56,6 +56,8 @@ class _FakeToolLayer:
     def __init__(self, owned: set[str], status_by_id: dict[str, str] | None = None) -> None:
         self._owned = owned
         self._status = status_by_id or {}
+        # The Handoff node (task 4.5) persists the package here; mirror the real `ToolLayer`.
+        self.handoff_store = InMemoryHandoffStore()
 
     def get_balance(self, tool_input):  # noqa: ANN001 - duck-typed test double
         if tool_input.product_id in self._owned:

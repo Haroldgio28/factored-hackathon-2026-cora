@@ -17,7 +17,7 @@ from cora.agent.confirmation import (
     resolve_confirmation,
 )
 from cora.agent.generator import GeneratedResponse, generate
-from cora.agent.graph import Node, Orchestrator, TraceSpan, TurnResult
+from cora.agent.graph import Node, Orchestrator, TraceSpan, TurnResult, TurnSignals
 from cora.agent.grounding import GroundingResult, check_grounding
 from cora.agent.llm import (
     BedrockLLMClient,
@@ -49,6 +49,7 @@ __all__ = [
     "TraceSpan",
     "TurnRecord",
     "TurnResult",
+    "TurnSignals",
     "action_verb",
     "check_grounding",
     "classify_reply",

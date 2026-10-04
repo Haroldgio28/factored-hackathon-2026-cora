@@ -16,7 +16,17 @@ A test that deliberately needs the real encoder can opt out with
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
+
+# The `ui/` Streamlit views live at the repo root (not under `src/`, so not installed), but the
+# agent-console smoke test imports `ui.agent_console`. Put the repo root on `sys.path` so `ui` is
+# importable in the suite exactly as it is under `python -c "import ui.agent_console"` from root.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 
 @pytest.fixture(autouse=True)

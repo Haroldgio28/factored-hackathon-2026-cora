@@ -35,6 +35,9 @@ nlu = [
     "tenacity==9.0.0",
     "torch==2.4.1",
 ]
+ui = [
+    "streamlit==1.40.1",
+]
 
 [build-system]
 requires = ["uv_build==0.12.3"]

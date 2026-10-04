@@ -82,8 +82,18 @@ class SessionState:
     pending_action: PendingConfirmation | None = None
     # Open clarification slots the machine is waiting on (design section 4 "open slots").
     open_slots: list[str] = field(default_factory=list)
+    # E1 dispute-intake slots (task 4.5, REQ-17): the free-text reason and whether the card is
+    # still in the customer's possession. The disputed transaction is NOT stored here - it is only
+    # ever taken from a tool-resolved id (`referenced_transaction_id`), never from free text.
+    dispute_reason: str | None = None
+    card_in_possession: bool | None = None
     # Count of consecutive failed clarifications; 2 -> escalate (E4) per REQ-07.
     clarification_count: int = 0
+    # Cross-turn escalation streaks (REQ-15, task 4.5): consecutive Very-Negative-sentiment turns
+    # and consecutive turns a tool kept failing. Both reset on a turn that breaks the chain; 2 of
+    # either escalates. Updated by `handoff.escalation.update_turn_signals` (deterministic code).
+    very_negative_streak: int = 0
+    tool_failure_streak: int = 0
     turn_history: list[TurnRecord] = field(default_factory=list)
 
     @property

@@ -52,6 +52,8 @@ from cora.agent.llm import LLMClient
 from cora.agent.references import Reference, resolve_reference
 from cora.agent.state import SessionState, SessionStore
 from cora.agent.templates import Outcome, action_verb
+from cora.handoff.escalation import DisputeIntake, Sentiment, dispute_intake, update_turn_signals
+from cora.handoff.package import HandoffPackage, build_package
 from cora.identity import Session
 from cora.nlu import entities as nlu_entities
 from cora.nlu import injection, language
@@ -63,14 +65,14 @@ from cora.policy import (
     PolicyInput,
     ReferencedTransaction,
 )
-from cora.tools import Status, ToolLayer
+from cora.tools import Result, Status, ToolLayer
 from cora.tools.base import mask_pii
 from cora.tools.confirmations import CardAction
-from cora.tools.models import GetBalanceInput, GetCardDetailsInput
+from cora.tools.models import GetBalanceInput, GetCardDetailsInput, HandoffReason
 
 logger = logging.getLogger("cora.agent.graph")
 
-__all__ = ["Node", "Orchestrator", "TraceSpan", "TurnResult"]
+__all__ = ["Node", "Orchestrator", "TraceSpan", "TurnResult", "TurnSignals"]
 
 # Intent groups the orchestrator uses to decide which ownership flag the policy needs. Mirrors
 # the policy engine's own groupings (kept here so the orchestrator asks the ToolLayer only the
@@ -108,6 +110,19 @@ class TraceSpan:
     detail: str | None = None
 
 
+@dataclass(frozen=True)
+class TurnSignals:
+    """Cross-turn escalation inputs the policy engine cannot see in a single `PolicyInput` (REQ-15).
+
+    `sentiment` is this turn's sentiment label (a classifier output, treated strictly as data);
+    `tool_failed` is True when a tool kept failing this turn after its own retries. Both default to
+    the neutral/no-failure case so a caller that has neither simply passes nothing.
+    """
+
+    sentiment: Sentiment | None = None
+    tool_failed: bool = False
+
+
 @dataclass
 class TurnResult:
     """The typed outcome of one `step(...)`: where the machine landed and why.
@@ -129,6 +144,11 @@ class TurnResult:
     # The rendered customer-facing response (task 4.2). `None` on nodes whose text another
     # subtask fills (e.g. Answer needs the read tool's facts, Confirm the 4.4 restatement).
     response: GeneratedResponse | None = None
+    # Set on a Handoff turn (task 4.5): the persisted case id, the built package and - for an E1
+    # dispute - the intake slot state. `None` on every non-handoff turn.
+    handoff_case_id: str | None = None
+    handoff_package: HandoffPackage | None = None
+    dispute: DisputeIntake | None = None
     spans: list[TraceSpan] = field(default_factory=list)
 
 
@@ -163,14 +183,21 @@ class Orchestrator:
     # -- public entry point ------------------------------------------------------------
 
     def step(
-        self, session: Session, utterance: str, *, proposed_action: Decision | None = None
+        self,
+        session: Session,
+        utterance: str,
+        *,
+        proposed_action: Decision | None = None,
+        turn_signals: TurnSignals | None = None,
     ) -> TurnResult:
         """Run one conversation turn through the machine (design section 4, in order).
 
         `session` is already VERIFIED by the identity service (fail-closed verification is its
         job); here we only check it is still live against the store's clock. `proposed_action` is
         an optional LLM proposal, validated against the allow-list but never adopted as the
-        decision (REQ-13).
+        decision (REQ-13). `turn_signals` carries the cross-turn escalation inputs the policy
+        engine cannot see in one turn (Very-Negative sentiment, a tool that keeps failing); they
+        feed `update_turn_signals`, which can escalate on a streak (REQ-15, task 4.5).
         """
         now = self._clock()
         # 1. Expiry / fail-closed re-auth. An expired or absent session discards all state.
@@ -201,9 +228,10 @@ class Orchestrator:
         intent, confidence = self._classify(masked)
         reference = self._resolve_reference(state, masked)
 
-        # 5. Build the typed PolicyInput from tool-resolved facts (never the model).
+        # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
+        #    results are kept so an escalation can build the handoff package from the SAME facts.
         tools = self._tool_layer_factory(session)
-        policy_input = self._build_policy_input(
+        policy_input, tool_results = self._build_policy_input(
             state=state,
             tools=tools,
             intent=intent,
@@ -228,10 +256,27 @@ class Orchestrator:
             if product_id is not None:
                 self._open_confirmation(state, result, tools, intent, product_id)
 
-        # Record the (masked) turn and reset the clarification counter on any non-clarify outcome.
+        # Record the (masked) turn BEFORE any handoff so the package's verbatim request is this
+        # turn's text; reset the clarification counter on any non-clarify outcome.
         state.record_turn(masked, intent.value if intent else None, decision.decision.value)
         if decision.decision is not Decision.CLARIFY:
             state.clarification_count = 0
+
+        # 7. Cross-turn escalation (REQ-15, task 4.5): fold this turn's sentiment / tool-failure
+        #    signal into the streak counters. A streak escalates even when the policy did not.
+        signals = turn_signals or TurnSignals()
+        streak_reason = update_turn_signals(
+            state, sentiment=signals.sentiment, tool_failed=signals.tool_failed
+        )
+        if result.node not in ("Escalate", "Handoff") and streak_reason is not None:
+            result = _node_handoff(self, state, decision)
+            result.intent = intent
+            result.message = f"{streak_reason.value}: escalation streak"
+
+        # 8. On any escalation (policy or streak), build + persist the REQ-16 handoff package from
+        #    the verified facts gathered this turn and run the E1 dispute intake (REQ-17).
+        if result.node == "Handoff":
+            self._handoff(session, state, result, tools, intent, reference, decision, tool_results)
         return result
 
     # -- understand helpers (deterministic) --------------------------------------------
@@ -261,26 +306,38 @@ class Orchestrator:
         injection_hit: bool,
         reference: Reference,
         proposed_action: Decision | None,
-    ) -> PolicyInput:
+    ) -> tuple[PolicyInput, list[Result]]:
         """Resolve every policy flag deterministically via the ToolLayer (never the model).
 
         Ownership/state/fraud are facts, so they come from the session-bound tool layer: the
         `customer_id` is the verified session's, so neither user text nor the model can widen
         access. A referential phrase that resolved to nothing is surfaced as `ambiguous_entity`
         so POL-070 clarifies.
+
+        Also returns the OK tool `Result`s fetched this turn so an escalation can build the
+        handoff package from the SAME verified facts (task 4.5) without re-querying - the facts a
+        human sees are exactly the ones the policy decided on.
         """
         product_id = reference.product_id or state.referenced_product_id
         resource_owned = False
         product_owned = False
         state_allows = False
         referenced_txn: ReferencedTransaction | None = None
+        tool_results: list[Result] = []
 
         if intent in _READ_INTENTS and product_id is not None:
-            resource_owned = self._owns_product(tools, product_id)
+            balance = tools.get_balance(GetBalanceInput(product_id=product_id))
+            resource_owned = balance.status is Status.OK
+            if resource_owned:
+                tool_results.append(balance)
         if intent in _ACTION_INTENTS and product_id is not None:
-            product_owned, state_allows = self._owns_actionable_card(tools, product_id)
+            details = tools.get_card_details(GetCardDetailsInput(product_id=product_id))
+            if details.status is Status.OK and details.data is not None:
+                product_owned = True
+                state_allows = details.data.product_status in _ACTIONABLE_CARD_STATUSES
+                tool_results.append(details)
 
-        return PolicyInput(
+        policy_input = PolicyInput(
             session_valid=state.authenticated,
             intent=intent,
             intent_confidence=confidence,
@@ -292,19 +349,7 @@ class Orchestrator:
             resource_owned=resource_owned,
             proposed_action=proposed_action,
         )
-
-    @staticmethod
-    def _owns_product(tools: ToolLayer, product_id: str) -> bool:
-        """True iff the product belongs to the session customer (fail closed on any non-OK)."""
-        return tools.get_balance(GetBalanceInput(product_id=product_id)).status is Status.OK
-
-    @staticmethod
-    def _owns_actionable_card(tools: ToolLayer, product_id: str) -> tuple[bool, bool]:
-        """`(owned, state_allows)` for a card action: owned via the tool, state via its status."""
-        result = tools.get_card_details(GetCardDetailsInput(product_id=product_id))
-        if result.status is not Status.OK or result.data is None:
-            return False, False
-        return True, result.data.product_status in _ACTIONABLE_CARD_STATUSES
+        return policy_input, tool_results
 
     # -- nodes (design section 4). Each records a trace span. ---------------------------
     #
@@ -428,6 +473,62 @@ class Orchestrator:
         """`Decide/Verify/Clarify -> Escalate`: build the handoff package next (4.5)."""
         return _node_handoff(self, state, decision)
 
+    # -- Handoff package + dispute intake (task 4.5, REQ-15/REQ-16/REQ-17) --------------
+
+    def _handoff(
+        self,
+        session: Session,
+        state: SessionState,
+        result: TurnResult,
+        tools: ToolLayer,
+        intent: Intent | None,
+        reference: Reference,
+        decision: PolicyDecision,
+        tool_results: list[Result],
+    ) -> None:
+        """Build the REQ-16 package from verified facts, run the E1 intake, and persist it (4.5).
+
+        The package is assembled by `handoff.build_package` from the SAME OK tool results the
+        policy decided on (never the model); priority is `high` on a fraud escalation (POL-040).
+        For an E1 dispute the slot-filler records the tool-identified transaction (never free
+        text), the reason and card-in-possession, and offers a freeze when fraud is suspected -
+        but the customer-facing copy stays the handoff acknowledgement, so no outcome is promised
+        (REQ-17). The full package is written to the durable handoff store for the agent console.
+        """
+        reason = _handoff_reason(intent, decision)
+        unresolved: list[str] = []
+        if intent is Intent.E1:
+            # Fraud is "suspected" when the policy escalated on a fraud signal (POL-040, priority
+            # high) - a deterministic read of the decision, not a model judgement.
+            fraud_suspected = decision.priority == "high"
+            dispute = dispute_intake(
+                verified_transaction_id=reference.transaction_id or state.referenced_transaction_id,
+                reason=state.dispute_reason,
+                card_in_possession=state.card_in_possession,
+                fraud_suspected=fraud_suspected,
+            )
+            result.dispute = dispute
+            unresolved = list(dispute.open_slots)
+            # Offer the freeze as a follow-up action note in the package; the customer-facing text
+            # is still only the handoff ack (no refund/outcome ever promised, REQ-17).
+            actions = ["offer_freeze(A1)"] if dispute.offer_freeze else []
+        else:
+            actions = []
+
+        package = build_package(
+            state,
+            tool_results,
+            reason,
+            priority=decision.priority,
+            unresolved_questions=unresolved,
+            actions_taken=actions,
+            now=self._clock(),
+        )
+        case_id = tools.handoff_store.create(package.to_store_dict())
+        result.handoff_package = package
+        result.handoff_case_id = case_id
+        result.spans.append(TraceSpan(node="Handoff", decision=reason.value, detail=case_id))
+
     def _node_abstain(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide -> Abstain` (POL-010/030/999): disclose nothing / route out of scope (4.6).
 
@@ -456,6 +557,28 @@ def _node_handoff(orch: Orchestrator, state: SessionState, decision: PolicyDecis
     result.node = "Handoff"
     result.response = orch._render(state, Outcome.ESCALATE)
     return result
+
+
+# Map the escalating intent to the handoff reason code recorded in the package (REQ-16). The
+# escalation intents E1-E4 map 1:1 onto `HandoffReason`; any other escalation path (a fraud signal
+# on a non-E intent, a clarify/verify/streak escalation) has no dispute/complaint/fraud intent, so
+# it is recorded as a human-request handoff (E4) - the catch-all "a human must take over" reason.
+_INTENT_HANDOFF_REASON: dict[Intent, HandoffReason] = {
+    Intent.E1: HandoffReason.DISPUTE,
+    Intent.E2: HandoffReason.COMPLAINT,
+    Intent.E3: HandoffReason.FRAUD,
+    Intent.E4: HandoffReason.HUMAN_REQUEST,
+}
+
+
+def _handoff_reason(intent: Intent | None, decision: PolicyDecision) -> HandoffReason:
+    """The REQ-16 reason code for this escalation: the E-intent if any, else fraud or human-request."""
+    if intent is not None and intent in _INTENT_HANDOFF_REASON:
+        return _INTENT_HANDOFF_REASON[intent]
+    # A fraud signal (POL-040) escalates with priority high even without an E3 intent -> FRAUD.
+    if decision.priority == "high":
+        return HandoffReason.FRAUD
+    return HandoffReason.HUMAN_REQUEST
 
 
 def _single(node: str, *, detail: str | None = None) -> TurnResult:
