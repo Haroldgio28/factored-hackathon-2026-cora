@@ -194,6 +194,17 @@ Docs/
 !/data/nlu/
 # ...but never the downloaded fastText language-id model weights (cached on demand, ~900 KB).
 /data/nlu/lid.176.*
+# ...and the Phase-6 evaluation evidence: the distilled result JSONs + the scenario suite are
+# submission evidence (structure steering). The large regenerable raw run records stay ignored.
+!/data/eval/
+/data/eval/*
+!/data/eval/scenarios.jsonl
+!/data/eval/scenarios_manifest.json
+!/data/eval/scenarios_subset.jsonl
+!/data/eval/metrics.json
+!/data/eval/fairness.json
+!/data/eval/b0_historical.json
+!/data/eval/thresholds_derivation.json
 
 # Workflow/agent scratch directory (orchestration tooling, not project source)
 .agents/

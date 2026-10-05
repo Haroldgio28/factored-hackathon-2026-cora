@@ -1,0 +1,47 @@
+{
+  "derived_at": "2026-10-05T11:53:21.939832+00:00",
+  "freeze_order": "select on validation -> freeze thresholds.json -> promote rules.yaml -> test slice scored only at 6.6",
+  "frozen_json": {
+    "cost_matrix": {
+      "clarify": 1.0,
+      "correct_answer": 0.0,
+      "unnecessary_escalate": 10.0,
+      "unsafe_answer": 100.0
+    },
+    "grid": {
+      "n": 21,
+      "start": 0.0,
+      "stop": 1.0
+    },
+    "invariant": "tau_escalate <= tau_clarify (POL-060 before POL-070); asserted at selection",
+    "n_validation": 200,
+    "note": "Frozen on the validation split before the test split was evaluated; feeds the rules.yaml POL-060/POL-070 placeholders. tau_fraud (POL-040) is NOT re-derived here.",
+    "rules": {
+      "POL-060": "confidence_below_escalate",
+      "POL-070": "confidence_below_clarify"
+    },
+    "selected_on": "validation",
+    "tau_clarify": 0.55,
+    "tau_escalate": 0.0,
+    "validation_cost": 101.0
+  },
+  "invariant": "tau_escalate <= tau_clarify (POL-060 before POL-070)",
+  "label": "offline measurement",
+  "n_held_out": 400,
+  "n_test_held_back": 200,
+  "n_validation": 200,
+  "new": {
+    "tau_clarify": 0.55,
+    "tau_escalate": 0.0
+  },
+  "old_rules_yaml": {
+    "tau_clarify": 0.6,
+    "tau_escalate": 0.4
+  },
+  "old_standin": {
+    "tau_clarify": 0.6,
+    "tau_escalate": 0.4
+  },
+  "task": "6.1b",
+  "validation_cost": 101.0
+}

@@ -1,0 +1,157 @@
+{
+  "configs": {
+    "b1": {
+      "attempted": {
+        "denominator": 60,
+        "numerator": 60,
+        "rate": 1.0
+      },
+      "config": "b1",
+      "containment": {
+        "denominator": 98,
+        "numerator": 98,
+        "rate": 1.0
+      },
+      "containment_caveat": "Containment is share-not-escalated; it is NOT a quality metric on its own (a contained but wrong or unsafe answer still counts as contained) - read it with SAR and the unsafe-by-type rates.",
+      "cost_assumptions": {
+        "chars_per_token": 4.0,
+        "input_usd_per_1k": 0.0,
+        "note": "Cost is an offline estimate: tokens approximated from text length (no provider usage captured by the runner); prices are the supplied published per-1k-token rates.",
+        "output_usd_per_1k": 0.0
+      },
+      "cost_per_attempted_usd": 0.0,
+      "cost_per_sar_usd": 0.0,
+      "escalation_precision": {
+        "denominator": 0,
+        "numerator": 0,
+        "rate": null
+      },
+      "escalation_recall": {
+        "denominator": 19,
+        "numerator": 0,
+        "rate": 0.0
+      },
+      "latency_p50_ms": {
+        "mean": 2191.6183999856003,
+        "n": 1,
+        "sd": 0.0
+      },
+      "latency_p95_ms": {
+        "mean": 5123.052854998967,
+        "n": 1,
+        "sd": 0.0
+      },
+      "missed_escalations": 19,
+      "repeats": 1,
+      "sar": {
+        "denominator": 60,
+        "numerator": 59,
+        "rate": 0.9833333333333333
+      },
+      "unnecessary_escalations": 0,
+      "unsafe_by_type": {
+        "disclosure_leak": {
+          "denominator": 16,
+          "numerator": 1,
+          "rate": 0.0625,
+          "rule_of_three_upper": null,
+          "wilson_95_high": 0.2832926836802987,
+          "wilson_95_low": 0.01111905730833121
+        },
+        "missed_escalation": {
+          "denominator": 19,
+          "numerator": 19,
+          "rate": 1.0,
+          "rule_of_three_upper": null,
+          "wilson_95_high": 1.0,
+          "wilson_95_low": 0.8318156346315496
+        },
+        "wrong_fact_answered": {
+          "denominator": 0,
+          "numerator": 0,
+          "rate": null,
+          "rule_of_three_upper": null,
+          "wilson_95_high": 1.0,
+          "wilson_95_low": 0.0
+        }
+      }
+    },
+    "cora": {
+      "attempted": {
+        "denominator": 60,
+        "numerator": 60,
+        "rate": 1.0
+      },
+      "config": "cora",
+      "containment": {
+        "denominator": 98,
+        "numerator": 85,
+        "rate": 0.8673469387755102
+      },
+      "containment_caveat": "Containment is share-not-escalated; it is NOT a quality metric on its own (a contained but wrong or unsafe answer still counts as contained) - read it with SAR and the unsafe-by-type rates.",
+      "cost_assumptions": {
+        "chars_per_token": 4.0,
+        "input_usd_per_1k": 0.0,
+        "note": "Cost is an offline estimate: tokens approximated from text length (no provider usage captured by the runner); prices are the supplied published per-1k-token rates.",
+        "output_usd_per_1k": 0.0
+      },
+      "cost_per_attempted_usd": 0.0,
+      "cost_per_sar_usd": 0.0,
+      "escalation_precision": {
+        "denominator": 13,
+        "numerator": 13,
+        "rate": 1.0
+      },
+      "escalation_recall": {
+        "denominator": 19,
+        "numerator": 13,
+        "rate": 0.6842105263157895
+      },
+      "latency_p50_ms": {
+        "mean": 7131.524750002427,
+        "n": 1,
+        "sd": 0.0
+      },
+      "latency_p95_ms": {
+        "mean": 10161.381869995965,
+        "n": 1,
+        "sd": 0.0
+      },
+      "missed_escalations": 6,
+      "repeats": 1,
+      "sar": {
+        "denominator": 60,
+        "numerator": 24,
+        "rate": 0.4
+      },
+      "unnecessary_escalations": 0,
+      "unsafe_by_type": {
+        "disclosure_leak": {
+          "denominator": 15,
+          "numerator": 0,
+          "rate": 0.0,
+          "rule_of_three_upper": 0.2,
+          "wilson_95_high": 0.20388926630434784,
+          "wilson_95_low": 0.0
+        },
+        "missed_escalation": {
+          "denominator": 19,
+          "numerator": 6,
+          "rate": 0.3157894736842105,
+          "rule_of_three_upper": null,
+          "wilson_95_high": 0.5398998982493537,
+          "wilson_95_low": 0.15364171004428598
+        },
+        "wrong_fact_answered": {
+          "denominator": 0,
+          "numerator": 0,
+          "rate": null,
+          "rule_of_three_upper": null,
+          "wilson_95_high": 1.0,
+          "wilson_95_low": 0.0
+        }
+      }
+    }
+  },
+  "label": "offline measurement"
+}

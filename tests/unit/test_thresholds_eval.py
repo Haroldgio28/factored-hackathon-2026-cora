@@ -19,8 +19,6 @@ import numpy as np
 import pytest
 
 from cora.eval.thresholds_eval import (
-    STANDIN_TAU_CLARIFY,
-    STANDIN_TAU_ESCALATE,
     derive_thresholds,
     promote_to_rules,
     refreeze,
@@ -90,9 +88,13 @@ def test_promote_edits_only_the_two_tau_lines_and_stays_loadable(tmp_path: Path)
 
     conf, correct = _clean_signal(60)
     choice = derive_thresholds(conf, correct, seed=42).choice
+    # The "old" values promote_to_rules returns must equal whatever rules.yaml currently holds.
+    # Read them from the file-under-test rather than the stand-in constants, so the test stays
+    # correct after 6.1b has legitimately promoted operational tau into the committed rules.yaml.
+    before = PolicyEngine.from_yaml(rules).thresholds
     old = promote_to_rules(choice, rules)
 
-    assert old == {"tau_escalate": STANDIN_TAU_ESCALATE, "tau_clarify": STANDIN_TAU_CLARIFY}
+    assert old == {"tau_escalate": before.tau_escalate, "tau_clarify": before.tau_clarify}
     edited = rules.read_text(encoding="utf-8")
     # Exactly two lines changed (the two tau lines); everything else is byte-identical.
     diff = [(a, b) for a, b in zip(original.splitlines(), edited.splitlines(), strict=True) if a != b]

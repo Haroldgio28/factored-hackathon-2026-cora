@@ -40,7 +40,7 @@ def _write(path: Path, df: pd.DataFrame) -> None:
 def _build_landing(root: Path) -> None:
     customers = pd.DataFrame(
         [
-            {"customer_id": f"CLI-{i:013d}", "country": country, "customer_segment": segment}
+            {"customer_id": f"CLI-{i:013d}", "country": country, "segment": segment}
             for i, (country, segment) in enumerate(
                 [
                     ("MX", "Mass"),
