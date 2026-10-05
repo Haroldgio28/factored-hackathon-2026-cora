@@ -19,7 +19,7 @@ Status: `Planned` · `Partial` · `Done`. Coverage today: **84 / 84 SRC mapped**
 | SRC-05 | Involve humans when needed | 15, 16 | 4.5 | `src/cora/handoff/` (package builder + `JsonHandoffStore` + E1 dispute intake + Very-Negative/tool-failure escalation streaks), wired into `src/cora/agent/graph.py` Handoff node; `ui/agent_console.py` renders the queue; `tests/unit/test_handoff_package.py` + `test_handoff_store.py` + `test_dispute_intake.py` (every E1-E4 trigger escalates+persists) | Done |
 | SRC-06 | Focused problem, end-to-end | 01, 04 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
 | SRC-07 | Data explains why it matters | 01 | 1.8 | `analysis/EDA_FINDINGS.md` | Partial |
-| SRC-08 | Establish baseline | 02, 41 | 6.2, 6.8 | EVALUATION.md | Planned |
+| SRC-08 | Establish baseline | 02, 41 | 6.2, 6.8 | B1 naive baseline done (6.2): `src/cora/eval/baselines.py` `B1NaiveLLM` - a single-prompt LLM with the customer's masked product data pasted in and no policy/grounding/confirmation (the REQ-41 contrast), PII masked before the one `LLMClient.complete` call, versioned es/pt prompts with recorded hashes; `tests/unit/test_eval_baselines.py` (6 tests, StubLLMClient). B0 historical baseline + EVALUATION.md pending (6.8/6.9) | Partial |
 | SRC-09 | Measure quality & efficiency gains | 02, 43 | 6.6, 6.9 | EVALUATION.md | Planned |
 | SRC-10 | Privacy, explainability, fairness, reliability, scalability | 36, 39, 46, 50, 51 | 4.2, 5.1, 6.7, 7.2 | dossier + reports | Planned |
 | SRC-11 | Explicit trade-offs | 03 | 7.3 | trade-off register | Planned |
