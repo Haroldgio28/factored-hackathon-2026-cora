@@ -70,30 +70,67 @@ Source artifacts referenced (not duplicated):
   mutation. The Confirm→Execute→Verify protocol and read-back are real; the state it toggles is
   overlay-backed. *(simulation — see `src/cora/tools` card overlay and `TOOL_CONTRACTS.md`.)*
 
-## 5. Known agent-correctness gap — live read-ownership for non-referenced reads
+## 5. Live read-ownership for non-referenced reads + FX conversion — RESOLVED
 
-Labelled **honest known limitation** *(offline measurement; live-observed in a manual demo run)*.
-This is a real Phase-4 agent-correctness gap, scheduled to be fixed **after Phase 7**.
+**Resolved** on branch `fix/live-read-ownership-fx` *(offline measurement; new unit tests, suite
+green)*. This was a real Phase-4 agent-correctness gap; it is fixed as of the live
+read-ownership/FX fix.
 
-- **Symptom.** A READ intent with **no specific `product_id`** — e.g. **I6 "list my products"**
-  (which uses `list_products`), or a bare "mi cuenta" with no resolved reference — never gets a safe
-  answer; the turn abstains even though the classifier is correct (I6 confidence ≈ 0.72), Bedrock
-  works, and the data exists.
-- **Root cause.** In `src/cora/agent/graph.py` `_build_policy_input`, `resource_owned` is set to
+- **What was wrong.** A READ intent with **no specific `product_id`** — **I6 "list my products"**
+  (served by `list_products`), or a bare "mi cuenta" with no resolved reference — abstained even
+  though the classifier was correct (I6 confidence ≈ 0.72), Bedrock worked and the data existed.
+  Separately, **FX conversion (I5)** abstained because `convert_currency` was **never invoked** by
+  the orchestrator graph.
+- **Root cause.** In `src/cora/agent/graph.py` `_build_policy_input`, `resource_owned` was set
   `True` **only** when `intent in _READ_INTENTS and product_id is not None` **and** a
-  `get_balance(product_id)` for that **one specific product** returns `Status.OK`. Ownership is thus
-  established solely per-product via a successful balance read. A read with no `product_id` leaves
-  `resource_owned=False`, so **POL-090 (`read_resource_owned → answer`) never matches** and the turn
-  falls through to **POL-999 (abstain)**.
-- **Why the eval doesn't surface it.** The suite *does* exercise non-referenced reads — 396/400
-  committed scenarios carry no `product_id`, including all 30 I6 cases. The gap is hidden because
-  the deterministic reference-outcome builder **encodes the current abstention as the expected
-  outcome**: `src/cora/eval/builder._expected_outcome` only sets `resource_owned=True` when
-  `product_id is not None and intent in _READ_INTENTS` and the balance read succeeds, so an I6 case
-  derives `resource_owned=False`, and its expected decision is `abstain`. The suite therefore scores
-  the abstention as *correct* rather than flagging it, so the held-out run never surfaces the defect.
-- **Scope.** Purely an ownership-resolution gap for non-referenced reads — not a classifier, LLM or
-  data defect. The fix (resolve ownership for product-list / account-level reads without requiring a
-  single `product_id`) is a Phase-4 correctness item deferred to after Phase 7.
+  `get_balance(product_id)` for that one product returned `Status.OK`. A read with no `product_id`,
+  and every FX turn, left `resource_owned=False`, so **POL-090 (`read_resource_owned → answer`)
+  never matched** and the turn fell through to **POL-999 (abstain)**.
+- **The fix.** `_build_policy_input` now resolves ownership for the two missing shapes, and the
+  orchestrator **renders the grounded answer** from the same-turn tool results so a POL-090 turn
+  returns a real customer-visible reply (not an empty response). Identity is still never taken
+  from model/user text:
+  - **Non-referenced reads** — scoped to the two shapes that have an account-level tool and
+    renderer: **I6 "list my products"** and a **bare I1 "mi saldo"**. For I6 **any** successful
+    `list_products()` sets `resource_owned=True` and its `Result` feeds grounding and the handoff —
+    an **empty but authorized** list is itself a grounded answer ("you have no products", rendered
+    in es/pt), per the I6 answer contract, not an ownership failure. For a bare I1 ownership is
+    gated on the **balance** read: with a
+    **single** owned product its balance is read and shown (and a balance read that comes back
+    `UNAVAILABLE` fails closed to tool-unavailable, never a stand-in product list); with
+    **several** products the request is ambiguous, so the turn **clarifies (POL-070)**. A
+    non-referenced **I2–I4** has no account-level tool/renderer, so it stays not-owned and
+    **abstains** rather than being answered with an unrelated product list.
+  - **FX conversion (I5):** `convert_currency(...)` is called from the proposed amount + source /
+    target currencies (entity extraction, treated as data; `to_currency` is in the entity schema).
+    An OK rate sets `resource_owned=True`; **incomplete entities** mark the entity ambiguous so the
+    turn **clarifies (POL-070)**. The target currency must be **unambiguous**: an unqualified
+    "pesos" (ambiguous across MXN/COP/ARS) is extracted as `to_currency=null` per the extraction
+    prompt, so **deterministic** code — not a model guess — routes it to POL-070. A >7-day-stale
+    rate fails closed to the honest tool-unavailable path. When no rate exists for the requested
+    date and the **latest prior** rate (within 7 days) is used, the answer **states it** to the
+    customer in es/pt (REQ-28), driven by the tool's `used_prior_rate` flag.
+  - **Answer rendering + grounding:** the `{facts}` string is assembled deterministically from the
+    OK `Result`s and rendered through the template-first, LLM-polish, **grounding-gated**,
+    language-guarded generator — so every figure shown comes from a tool value this turn (REQ-08).
+  Ownership is **not** weakened: a FORBIDDEN/NOT_FOUND product read still denies, and a tool outage
+  fails closed to `TOOL_UNAVAILABLE` via `_safe_read`, never a false "not owned".
+- **Eval alignment.** `src/cora/eval/builder._expected_outcome` was updated to derive the reference
+  outcome with the **same deterministic tool-ownership logic** (list_products for I6 — an OK list,
+  even empty, is `answer`; the gated balance read for a bare I1; convert_currency for I5; I2–I4
+  stay abstain), still fed through `PolicyEngine.decide` as an independent derivation — so the
+  suite now scores the correct `answer` for I5/I6 and an owned single-product I1 while I2–I4 keep
+  abstaining. The committed workload (`data/eval/scenarios.jsonl`) was updated so the empty-list
+  I6 case (`normal-037`) scores `answer`, matching the corrected builder. The runner now presents
+  each **adversarial condition to both compared configurations** (REQ-41 same workload): a
+  `force_tool_fault` case forces every read to fail for **B1 and CORA**, and an
+  `unauthorized_access` case makes **both** attempt the same foreign read through their
+  session-bound tool layers (which still deny it) — the comparison is no longer applied to CORA
+  only. The builder's
+  date-sensitive FX reference and the runner now share one evaluation clock (`EVAL_NOW` in
+  `src/cora/eval/scenarios.py`), so the expected and produced conversions resolve the **same** rate
+  row rather than two different dates.
+- **Scope.** Pure ownership-resolution / wiring fix in the orchestrator and the matching reference
+  builder; no classifier, LLM, policy-rule or data change.
 
 <!-- ponytail: this file is the consolidation point; new gaps get one labelled line here, not a new doc. -->

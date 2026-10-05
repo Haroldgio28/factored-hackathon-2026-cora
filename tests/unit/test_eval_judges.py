@@ -110,6 +110,19 @@ def test_facts_not_applicable_without_reference_facts() -> None:
     assert verdict.passed and not verdict.applicable
 
 
+def test_i6_answer_carries_no_fabricated_count_fact() -> None:
+    # Regression (review finding 2): the I6 renderer never states a numeric product COUNT - it
+    # lists product rows, or renders "no products". The builder therefore records NO numeric
+    # expected fact for I6, so `judge_facts` is not-applicable and a correct I6 answer is never
+    # falsely failed for a count the response does not contain. Both a non-empty list answer...
+    scn = _scn(intent=Intent.I6, decision=Decision.ANSWER, facts={})
+    non_empty = judge_facts(_rec(scn, text="Tus productos:\n- Checking ****1234 (USD, Active)"), scn)
+    assert non_empty.passed and not non_empty.applicable
+    # ...and an empty-list answer (which carries no figure at all) pass without a fabricated count.
+    empty = judge_facts(_rec(scn, text="No tienes productos contratados."), scn)
+    assert empty.passed and not empty.applicable
+
+
 # --- judge_policy -----------------------------------------------------------------------------
 
 

@@ -68,14 +68,18 @@ class ExtractedEntities(BaseModel):
     date_from: dt.date | None = None
     date_to: dt.date | None = None
     amount: Decimal | None = Field(default=None, ge=0)
+    # The source currency of an amount (I1-I4) and, for an FX conversion (I5), the target to
+    # convert it into. Both candidates only; the FX tool validates and resolves the real rate.
     currency: str | None = None
+    to_currency: str | None = None
     merchant: str | None = None
     product_ref: str | None = None
 
     def model_post_init(self, _context: object) -> None:
         # A currency outside the known set fails closed (invalid, not silently kept).
-        if self.currency is not None and self.currency not in _CURRENCIES:
-            raise ValueError(f"unknown currency: {self.currency!r}")
+        for code in (self.currency, self.to_currency):
+            if code is not None and code not in _CURRENCIES:
+                raise ValueError(f"unknown currency: {code!r}")
 
 
 class EntitiesResult(BaseModel):

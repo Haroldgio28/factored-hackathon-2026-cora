@@ -5,7 +5,8 @@ Campos (todos opcionales; usa null si no aparece en el mensaje):
 - "date_from": fecha inicial de un rango en ISO "YYYY-MM-DD", o null.
 - "date_to": fecha final de un rango en ISO "YYYY-MM-DD", o null.
 - "amount": un numero no negativo (sin simbolo de moneda), o null.
-- "currency": uno de "USD", "MXN", "COP", "ARS", o null.
+- "currency": moneda de origen del monto, una de "USD", "MXN", "COP", "ARS", o null.
+- "to_currency": moneda destino en una conversion, una de "USD", "MXN", "COP", "ARS", o null. Usa un codigo SOLO si el mensaje identifica el pais sin ambiguedad (por ejemplo "pesos mexicanos"/"pesos colombianos"/"pesos argentinos", o el propio codigo). Un "pesos" sin pais es ambiguo entre MXN/COP/ARS: devuelve null (no adivines).
 - "merchant": nombre del comercio como texto, o null.
 - "product_ref": referencia a una tarjeta o producto mencionado (por ejemplo "mi tarjeta de credito"), o null.
 

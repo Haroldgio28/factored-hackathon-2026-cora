@@ -139,6 +139,41 @@ def test_invented_status_is_blocked() -> None:
     assert "bloqueada" in blocked.offending
 
 
+def test_swapped_currency_code_is_blocked() -> None:
+    """REQ-08: a polish that keeps the number but swaps the currency (USD -> COP) is blocked.
+
+    The amount is grounded, so only the number check is not enough; the currency code must match a
+    currency the tools returned this turn or the customer is told the wrong currency.
+    """
+    swapped = check_grounding("Tu saldo es 1.234,56 COP.", [_balance_result()])
+    assert not swapped.ok
+    assert "COP" in swapped.offending
+    # The correct code passes.
+    assert check_grounding("Tu saldo es 1.234,56 USD.", [_balance_result()]).ok
+
+
+def test_swapped_fx_currency_is_blocked() -> None:
+    """An FX answer renders both codes; swapping the target (COP -> ARS) is blocked."""
+    conv = Result[ConversionData](
+        status=Status.OK,
+        data=ConversionData(
+            original_amount=100.0,
+            from_currency="USD",
+            to_currency="COP",
+            converted_amount=400000.0,
+            rate=4000.0,
+            rate_date=datetime(2026, 6, 15).date(),
+            requested_date=datetime(2026, 6, 15).date(),
+            used_prior_rate=False,
+        ),
+    )
+    # Both USD and COP are grounded by the conversion result; ARS was never returned.
+    assert check_grounding("100 USD equivale a 400000 COP.", [conv]).ok
+    bad = check_grounding("100 USD equivale a 400000 ARS.", [conv])
+    assert not bad.ok
+    assert "ARS" in bad.offending
+
+
 def test_grounded_status_from_transactions_passes() -> None:
     """A transaction status present in the tool result is grounded."""
     txns = Result[TransactionsData](
@@ -213,6 +248,25 @@ def test_generator_blocks_ungrounded_polish_and_falls_back() -> None:
     assert out.grounding_blocked
     assert out.prompt_hash is None
     assert out.text == "Tu saldo es 1.234,56 USD."  # the grounded template verbatim
+
+
+def test_generator_blocks_currency_swapping_polish_and_falls_back() -> None:
+    """A polish that keeps the figure but swaps the currency code is discarded for the template.
+
+    This is the adversarial currency case: the number survives the number check, but the swapped
+    code is not grounded, so the deterministic checker blocks it and the grounded facts are shown.
+    """
+    swapper = StubLLMClient(default="Tu saldo es 1.234,56 COP.")  # swapped USD -> COP
+    out = generate(
+        Outcome.ANSWER,
+        "es",
+        fields={"facts": "Tu saldo es 1.234,56 USD."},
+        tool_results=[_balance_result()],
+        client=swapper,
+    )
+    assert not out.polished
+    assert out.grounding_blocked
+    assert out.text == "Tu saldo es 1.234,56 USD."  # grounded template verbatim, correct currency
 
 
 def test_generator_keeps_grounded_polish() -> None:

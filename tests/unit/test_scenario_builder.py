@@ -71,8 +71,23 @@ def _build_landing(root: Path) -> None:
             for i in range(6)
         ]
     )
+    # A USD->COP rate so the I5 reference derivation can serve a rate (REQ-28). Dated well before
+    # the builder's latest-rate "today", so the exact-date path is exercised deterministically.
+    rates = pd.DataFrame(
+        [
+            {
+                "date": "2026-06-18",
+                "source_currency": "USD",
+                "target_currency": "COP",
+                "exchange_rate": "4000.0",
+                "buy_rate": None,
+                "sell_rate": None,
+            }
+        ]
+    )
     _write(root / "customers.parquet", customers)
     _write(root / "products.parquet", products)
+    _write(root / "daily_exchange_rates.parquet", rates)
 
 
 @pytest.fixture(scope="module")
@@ -160,3 +175,47 @@ def test_expected_decision_matches_policy_engine(source: LocalSource, policy: Po
     credit = next(s for s in scenarios if s.adversarial_kind == "credit_request")
     direct_credit = policy.decide(PolicyInput(session_valid=True, intent=Intent.X1, intent_confidence=1.0))
     assert credit.expected_decision == direct_credit.decision
+
+
+def test_non_referenced_reads_and_fx_reference_is_answer(source: LocalSource, policy: PolicyEngine) -> None:
+    # Regression for the live read-ownership + FX fix (REQ-04, REQ-28): the reference outcome for
+    # a non-referenced read (I6 list products, bare I1 balance) and a valid FX request (I5) is now
+    # ANSWER, not the old POL-999 abstain. The owner in this fixture has a product and a USD->COP
+    # rate exists, so the builder's independent ownership derivation resolves resource_owned=True.
+    scenarios, _ = build_suite(source, policy, seed=42)
+    for intent in (Intent.I6, Intent.I1, Intent.I5):
+        case = next(s for s in scenarios if s.category == "normal" and s.intent is intent)
+        assert case.expected_decision is Decision.ANSWER, intent
+    # The reference stays an INDEPENDENT PolicyEngine.decide of an owned read, not a copied answer.
+    direct = policy.decide(
+        PolicyInput(session_valid=True, intent=Intent.I6, intent_confidence=1.0, resource_owned=True)
+    )
+    assert direct.decision is Decision.ANSWER
+    # The bare I1 reference additionally carries the single owned product's balance figure.
+    bare_i1 = next(s for s in scenarios if s.category == "normal" and s.intent is Intent.I1)
+    assert "current_balance" in bare_i1.expected_facts
+    # A non-referenced I2-I4 has no account-level tool/renderer, so the reference must NOT flip it
+    # to a product-list answer: it stays the fail-closed abstain, matching the orchestrator.
+    for intent in (Intent.I2, Intent.I3, Intent.I4):
+        case = next(s for s in scenarios if s.category == "normal" and s.intent is intent)
+        assert case.expected_decision is Decision.ABSTAIN, intent
+        assert "product_count" not in case.expected_facts
+
+
+def test_adversarial_read_families_carry_concrete_setup(source: LocalSource, policy: PolicyEngine) -> None:
+    # Eval-validity regression: unauthorized_access and tool_failure must not force resource_owned
+    # by label on an own-account utterance (which now answers). Each carries CONCRETE setup the
+    # runner replays, and its reference is still the fail-closed abstain derived from a real Result.
+    scenarios, _ = build_suite(source, policy, seed=42)
+
+    unauth = next(s for s in scenarios if s.adversarial_kind == "unauthorized_access")
+    # A FOREIGN product reference the runner seeds; it must NOT be one of the session customer's.
+    assert unauth.referenced_product_id is not None
+    assert unauth.referenced_product_id != unauth.product_id
+    assert not unauth.force_tool_fault
+    assert unauth.expected_decision is Decision.ABSTAIN
+
+    tool_fail = next(s for s in scenarios if s.adversarial_kind == "tool_failure")
+    assert tool_fail.force_tool_fault is True
+    assert tool_fail.referenced_product_id is None
+    assert tool_fail.expected_decision is Decision.ABSTAIN

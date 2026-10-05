@@ -33,13 +33,15 @@ each variant. Both languages are shown for every path.
 ## Path 1 — Safe account read (balance of a specific card) — I1 → POL-090 `answer`
 
 **Why a specific product reference.** A read decides `answer` only when `read_resource_owned`
-holds (POL-090). In the current build, `_build_policy_input` in
-[`../../src/cora/agent/graph.py`](../../src/cora/agent/graph.py) sets `resource_owned=True` only
-when the turn resolves to a **specific** product the session owns; a bare "¿cuál es mi saldo?" with
-no product reference never sets it, so POL-090 does not match and the turn falls through to POL-999
-`abstain` (the live non-referenced-read gap documented in
-[`LIMITATIONS.md`](LIMITATIONS.md)). The demo therefore uses an **explicit product reference** (a
-card ending in known digits) so POL-090 matches and the balance is answered on a live run.
+holds (POL-090). `_build_policy_input` in
+[`../../src/cora/agent/graph.py`](../../src/cora/agent/graph.py) sets `resource_owned=True` either
+when the turn resolves to a **specific** owned product (via `get_balance`) **or**, for a
+non-referenced read, at the customer level: **I6** answers when `list_products` returns ≥1 owned
+product, and a bare **I1** "¿cuál es mi saldo?" answers when the customer owns exactly **one**
+product (its balance is read and shown), otherwise it clarifies (several products) — see
+[`LIMITATIONS.md`](LIMITATIONS.md) §5 (resolved). The
+demo still uses an **explicit product reference** (a card ending in known digits) so the answered
+figure is tied to one named card and the grounding is easy to point at on screen.
 
 - **Setup:** authenticated session; the customer owns a card ending in `1234`.
 - **es (MX):** `Hola, ¿me pasas el saldo de mi tarjeta terminada en 1234?`
@@ -83,35 +85,34 @@ session, then reports success **only** after the tool's read-back confirms the p
 
 ---
 
-## Path 3 — FX conversion — I5 → POL-999 `abstain` (known gap, honest demo)
+## Path 3 — FX conversion — I5 → POL-090 `answer`
 
-**What the current build actually does with FX.** The `convert_currency` tool exists and is
-unit-tested at the tool layer (I5, REQ-28; see
-[`../../src/cora/tools/layer.py`](../../src/cora/tools/layer.py)), but the turn orchestrator does
-**not** wire it into the policy path: `_build_policy_input` in
-[`../../src/cora/agent/graph.py`](../../src/cora/agent/graph.py) only calls `get_balance` for a read
-intent, and only when a specific owned `product_id` is resolved. An FX request carries an
-amount + currency pair, not a product reference, so `product_id` stays `None`, `resource_owned`
-stays false, **POL-090 does not match**, and the turn falls through to **POL-999 `abstain`**. This
-is the **same non-referenced-read root cause** documented as a known Phase-4 correctness gap in
-[`LIMITATIONS.md`](LIMITATIONS.md) §5 (and the FX tool simply isn't invoked by the graph yet). The
-demo tells the truth about this rather than claiming an answer the build cannot produce today.
+**What the current build does with FX.** The `convert_currency` tool (I5, REQ-28; see
+[`../../src/cora/tools/layer.py`](../../src/cora/tools/layer.py)) is now **wired into the policy
+path**: for an I5 turn, `_build_policy_input` in
+[`../../src/cora/agent/graph.py`](../../src/cora/agent/graph.py) reads the proposed amount + source
+/ target currencies (entity extraction, treated as data) and calls `convert_currency`. An OK rate
+sets `resource_owned=True`, so **POL-090 answers** with the grounded figure. This closes the
+former gap documented in [`LIMITATIONS.md`](LIMITATIONS.md) §5 (resolved). Fail-closed branches are
+preserved: missing/ambiguous entities clarify (POL-070), and a rate older than 7 days abstains
+honestly rather than guessing a rate (REQ-28).
 
-- **Setup:** authenticated session.
+- **Setup:** authenticated session; the `daily_exchange_rates` table landed with a recent rate for
+  the demo pair.
 - **es (AR):** `Hola, ¿cuánto me quedan 100 dólares pasados a pesos argentinos?`
 - **pt:** `Olá, quanto fica 100 dólares convertidos para pesos argentinos?`
-- **Expected decision:** intent `I5` (currency conversion) classifies correctly, but with no owned
-  `product_id` resolved the FX result is never fetched into the policy input →
-  **POL-999 `abstain`** (fail closed, disclose nothing, offer a human). CORA does **not** invent a
-  rate or amount.
-- **Expected reply (`ABSTAIN`, grounded template verbatim — no figures, offers a human):**
-  - es: `Lo siento, no puedo ayudarte con eso por este medio. Si lo deseas, puedo transferirte con una persona del equipo.`
-  - pt: `Desculpe, não posso ajudar com isso por este canal. Se preferir, posso encaminhar você a uma pessoa da equipe.`
-- **Point at:** POL-999 on the trace span (not POL-090), that **no** FX figure appears (nothing was
-  grounded because nothing was fetched — fail closed), the `trace_id`, and the LIMITATIONS §5 note
-  explaining this is the known non-referenced-read gap (the fix — resolving ownership for FX /
-  account-level reads and invoking `convert_currency` — is deferred to after Phase 7). Verify the
-  exact abstain template against the response generator before recording.
+- **Expected decision:** intent `I5`; `convert_currency` returns a rate within 7 days →
+  `read_resource_owned` true → **POL-090 `answer`**. The figure comes only from the FX tool
+  `Result`; CORA never invents a rate or amount.
+- **Expected reply (grounded `ANSWER`, figures from the FX tool `Result` — exact numbers depend on
+  the landed rate):** the converted amount with the rate date, flagged if a latest-prior rate was
+  used (REQ-28). Verify the rendered figure against the tool `Result` before recording.
+- **Honest fallback to point at if the rate is stale (>7 days):** the tool abstains and CORA
+  surfaces the fail-closed tool-unavailable copy (no figure) rather than a guessed rate — a good
+  secondary beat if the demo data has no fresh rate for the pair.
+- **Point at:** POL-090 on the trace span, the FX tool `source_refs` (table
+  `daily_exchange_rates`), the grounding result (the shown figure matched the tool `Result`), and
+  the `trace_id`.
 
 ---
 

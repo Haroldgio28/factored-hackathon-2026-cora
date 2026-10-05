@@ -74,7 +74,16 @@ from cora.policy import (
 from cora.tools import Result, Status, ToolLayer
 from cora.tools.base import mask_pii
 from cora.tools.confirmations import CardAction
-from cora.tools.models import GetBalanceInput, GetCardDetailsInput, HandoffReason
+from cora.tools.models import (
+    BalanceData,
+    ConversionData,
+    ConvertCurrencyInput,
+    GetBalanceInput,
+    GetCardDetailsInput,
+    HandoffReason,
+    ListProductsInput,
+    ProductsData,
+)
 
 logger = logging.getLogger("cora.agent.graph")
 
@@ -346,7 +355,7 @@ class Orchestrator:
         #    shared across concurrent FastAPI requests, and a mutable per-turn field could let an
         #    overlapping es/pt turn classify with the wrong language and misroute policy (REQ-51).
         intent, confidence = self._classify(masked, state.language)
-        reference = self._resolve_reference(state, masked)
+        reference, entities = self._resolve_reference(state, masked)
 
         # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
         #    results are kept so an escalation can build the handoff package from the SAME facts.
@@ -358,6 +367,7 @@ class Orchestrator:
             confidence=confidence,
             injection_hit=injection_hit,
             reference=reference,
+            entities=entities,
             proposed_action=proposed_action,
         )
 
@@ -380,6 +390,14 @@ class Orchestrator:
             product_id = reference.product_id or state.referenced_product_id
             if product_id is not None:
                 self._open_confirmation(state, result, tools, intent, product_id)
+
+        # An ANSWER decision (POL-090) renders the grounded read result HERE, where this turn's
+        # OK `tool_results` are in scope. The facts string is assembled deterministically from
+        # those Result objects (never the model), then rendered through the template-first,
+        # LLM-polish, grounding-gated, language-guarded generator - so the customer sees a real,
+        # source-backed figure and the grounding gate runs against the SAME tool results (REQ-08).
+        if decision.decision is Decision.ANSWER:
+            result.response = self._render_answer(state, tool_results)
 
         # A tool read came back UNAVAILABLE (after `_safe_read`'s bounded retries): the tool
         # outcome is in DOUBT, so FAIL CLOSED (REQ-40, security steering P4). This is distinct from
@@ -468,11 +486,20 @@ class Orchestrator:
             logger.warning("intent classifier unavailable; using keyword fallback", exc_info=True)
             return keyword_fallback_intent(masked_utterance, language)
 
-    def _resolve_reference(self, state: SessionState, masked_utterance: str) -> Reference:
-        """Extract candidate entities (LLM proposes) then resolve the reference from state (code)."""
+    def _resolve_reference(
+        self, state: SessionState, masked_utterance: str
+    ) -> tuple[Reference, nlu_entities.ExtractedEntities | None]:
+        """Extract candidate entities (LLM proposes) then resolve the reference from state (code).
+
+        Returns the resolved cross-turn `Reference` AND the raw candidate entities, so the FX
+        path (I5) can read the proposed amount/currencies from the SAME extraction without a
+        second LLM call. The entities stay strictly data: the reference is still resolved from
+        session state, and the FX tool validates currencies/amount before anything is disclosed.
+        """
         extracted = nlu_entities.extract_entities(masked_utterance, client=self._llm)
-        product_ref = extracted.entities.product_ref if extracted.entities is not None else None
-        return resolve_reference(state, product_ref)
+        entities = extracted.entities
+        product_ref = entities.product_ref if entities is not None else None
+        return resolve_reference(state, product_ref), entities
 
     def _build_policy_input(
         self,
@@ -483,6 +510,7 @@ class Orchestrator:
         confidence: float,
         injection_hit: bool,
         reference: Reference,
+        entities: nlu_entities.ExtractedEntities | None = None,
         proposed_action: Decision | None,
     ) -> tuple[PolicyInput, list[Result], bool]:
         """Resolve every policy flag deterministically via the ToolLayer (never the model).
@@ -505,16 +533,72 @@ class Orchestrator:
         resource_owned = False
         product_owned = False
         state_allows = False
+        ambiguous_entity = reference.ambiguous
         tool_failed = False
         referenced_txn: ReferencedTransaction | None = None
         tool_results: list[Result] = []
 
-        if intent in _READ_INTENTS and product_id is not None:
+        if intent is Intent.I5:
+            # FX conversion (I5, REQ-28/ADR-016): ownership here is "the customer may use the
+            # FX capability", established by a successful rate read for the proposed amount +
+            # currencies. The entities are DATA (LLM-proposed); the tool validates currencies,
+            # amount and rate freshness. Incomplete/ambiguous entities carry no amount+currencies,
+            # so there is nothing to convert: mark `ambiguous_entity` so POL-070 CLARIFIES (ask
+            # one focused question) rather than guessing a rate. A >7-day-stale rate comes back
+            # UNAVAILABLE and surfaces the honest fail-closed copy, never a guessed figure.
+            conversion = self._convert_fx(tools, entities)
+            if conversion is None:
+                ambiguous_entity = True
+            else:
+                resource_owned = conversion.status is Status.OK
+                tool_failed = tool_failed or conversion.status is Status.UNAVAILABLE
+                if resource_owned:
+                    tool_results.append(conversion)
+        elif intent in _READ_INTENTS and product_id is not None:
             balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
             resource_owned = balance.status is Status.OK
             tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
             if resource_owned:
                 tool_results.append(balance)
+        elif intent in (Intent.I1, Intent.I6):
+            # A non-referenced read we can actually render at the account/customer level: I6
+            # ("list my products") and a bare I1 ("mi saldo"). The other read intents (I2-I4) have
+            # NO account-level tool/renderer wired, so a non-referenced I2-I4 stays not-owned and
+            # fails closed to abstain rather than being answered with an unrelated product list.
+            # Ownership is resolved at the CUSTOMER level via `list_products`, which the
+            # session-bound tool layer scopes to the verified `customer_id` (never user/model
+            # text). A tool outage stays UNAVAILABLE (fail closed), never a false "not owned".
+            products = _safe_read(lambda: tools.list_products(ListProductsInput()))
+            tool_failed = tool_failed or products.status is Status.UNAVAILABLE
+            if products.status is Status.OK and products.data is not None:
+                owned_products = products.data.products
+                if intent is Intent.I6:
+                    # I6 is answered by the product list itself: an OK, session-scoped list is a
+                    # grounded answer even when EMPTY ("you have no products"), per the tool
+                    # contract and the I6 answer path - an empty owned collection is not an
+                    # ownership failure, so POL-090 answers from that Result either way.
+                    resource_owned = True
+                    tool_results.append(products)
+                elif len(owned_products) == 1:
+                    # A bare BALANCE read (I1) needs the actual balance figure, not just proof the
+                    # customer owns a product: `list_products` carries no balance. Ownership for
+                    # I1 is therefore gated on the BALANCE read succeeding, not on `list_products`
+                    # alone - otherwise a balance read that comes back UNAVAILABLE would still
+                    # answer the (unrelated) product list instead of failing closed. The id comes
+                    # from the session-scoped tool result, never user/model text.
+                    only_id = owned_products[0].product_id
+                    balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=only_id)))
+                    tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
+                    if balance.status is Status.OK:
+                        resource_owned = True
+                        tool_results.append(balance)
+                elif owned_products:
+                    # Several products: the bare balance request does not name which one, so the
+                    # product reference is ambiguous. Clarify (POL-070) rather than guess an
+                    # account or dump a product list for a balance question. An EMPTY list for a
+                    # bare I1 has no balance to resolve, so it stays not-owned and fails closed to
+                    # abstain (unchanged) - only I6 answers an empty list.
+                    ambiguous_entity = True
         if intent in _ACTION_INTENTS and product_id is not None:
             details = _safe_read(lambda: tools.get_card_details(GetCardDetailsInput(product_id=product_id)))
             tool_failed = tool_failed or details.status is Status.UNAVAILABLE
@@ -529,13 +613,35 @@ class Orchestrator:
             intent_confidence=confidence,
             injection_hit=injection_hit,
             referenced_txn=referenced_txn,
-            ambiguous_entity=reference.ambiguous,
+            ambiguous_entity=ambiguous_entity,
             product_owned=product_owned,
             state_allows=state_allows,
             resource_owned=resource_owned,
             proposed_action=proposed_action,
         )
         return policy_input, tool_results, tool_failed
+
+    def _convert_fx(self, tools: ToolLayer, entities: nlu_entities.ExtractedEntities | None) -> Result | None:
+        """Call `convert_currency` from the proposed FX entities, or None if they are incomplete.
+
+        An FX turn needs an amount, a source currency and a target currency; the request date
+        defaults to today (the turn clock), so the tool uses the exact-date rate or the latest
+        prior within 7 days (REQ-28). The entities are untrusted DATA: a missing field returns
+        None so the turn falls through to clarify (POL-070), and the tool itself validates the
+        currencies/amount - this never invents a rate. Routed through `_safe_read` so a transport
+        outage fails closed to UNAVAILABLE, not an exception out of the turn.
+        """
+        if entities is None or entities.amount is None:
+            return None
+        if entities.currency is None or entities.to_currency is None:
+            return None
+        tool_input = ConvertCurrencyInput(
+            amount=float(entities.amount),
+            from_currency=entities.currency,
+            to_currency=entities.to_currency,
+            on_date=self._clock().date(),
+        )
+        return _safe_read(lambda: tools.convert_currency(tool_input))
 
     # -- nodes (design section 4). Each records a trace span. ---------------------------
     #
@@ -548,12 +654,27 @@ class Orchestrator:
         """`Expired -> Unauthenticated`: state already discarded; force re-auth, disclose nothing."""
         return _single("Unauthenticated", detail="session expired; state discarded, re-auth required")
 
-    def _render(self, state: SessionState, outcome: Outcome, **fields: str) -> GeneratedResponse:
+    def _render(
+        self,
+        state: SessionState,
+        outcome: Outcome,
+        *,
+        tool_results: list[Result] | None = None,
+        polish: bool = True,
+        **fields: str,
+    ) -> GeneratedResponse:
         """Render the customer-facing response for `outcome` in the session language (task 4.2).
 
         Deterministic template first, LLM polish via the orchestrator's client when configured;
         fails closed to the template on any LLM error (REQ-40). Figures come only from `fields`,
         which the node fills from tool facts - the model never originates a value.
+
+        `polish=False` forces the deterministic template verbatim (no LLM call). It is the
+        fail-closed choice for a FACTUAL answer: the grounding gate only validates numbers, dates
+        and statuses, so an LLM rephrase could preserve every figure while swapping a currency code
+        (USD->COP) or a product type - a fact not in the grounding whitelist. The ANSWER template is
+        already the grounded `{facts}` verbatim, so skipping polish loses only tone, never a value,
+        and "the LLM proposes, deterministic code decides" holds for every displayed fact.
 
         Task 5.2 adds the circuit breaker as a routing switch on top of this already-safe fallback:
         while the breaker is OPEN, polish is forced off and the LLM is NOT attempted (short-circuit
@@ -574,10 +695,41 @@ class Orchestrator:
             breaker_open = False
         if breaker_open:
             # Breaker open: skip the LLM entirely, render the grounded template (REQ-40).
-            return generate(outcome, state.language, fields=fields, polish=False, client=self._llm)
+            return generate(
+                outcome,
+                state.language,
+                fields=fields,
+                tool_results=tool_results,
+                polish=False,
+                client=self._llm,
+            )
         return generate(
-            outcome, state.language, fields=fields, client=_BreakerClient(self._llm, self._breaker)
+            outcome,
+            state.language,
+            fields=fields,
+            tool_results=tool_results,
+            polish=polish,
+            client=_BreakerClient(self._llm, self._breaker),
         )
+
+    def _render_answer(self, state: SessionState, tool_results: list[Result]) -> GeneratedResponse:
+        """Render a grounded ANSWER (POL-090) from this turn's OK tool results (task 4.2, REQ-08).
+
+        The `{facts}` text is assembled DETERMINISTICALLY from the `Result` objects by
+        `_facts_from_results` - every figure, currency code and product type it contains comes from
+        a tool value this turn. ANSWER is rendered TEMPLATE-ONLY (`polish=False`): the grounding
+        gate validates only numbers, dates and statuses, so an LLM rephrase could keep every figure
+        while swapping a currency (USD->COP) or a product type and still pass grounding. Those facts
+        are not in the grounding whitelist, so the fail-closed rule "every displayed fact comes from
+        a same-turn tool result" is only guaranteed when the model never rewrites the facts text.
+        The template IS the grounded facts verbatim, so skipping polish loses tone, never a value.
+        If no OK result was gathered (should not happen on a POL-090 turn, which requires
+        `resource_owned=True`), fail closed to the honest tool-unavailable copy.
+        """
+        facts = _facts_from_results(tool_results, state.language)
+        if not facts:
+            return self._render(state, Outcome.TOOL_UNAVAILABLE)
+        return self._render(state, Outcome.ANSWER, tool_results=tool_results, polish=False, facts=facts)
 
     def _node_reauth(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """POL-000: the session is not valid for this turn -> re-authenticate (fail closed)."""
@@ -589,10 +741,10 @@ class Orchestrator:
         return result
 
     def _node_answer(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
-        """`Decide -> Answer` (POL-090): render from tool facts (4.2). Returns to Authenticated.
+        """`Decide -> Answer` (POL-090): land the node; `step` renders from this turn's tool facts.
 
-        The grounded `facts` string is assembled from the read tool's `Result` by the read
-        subtask; until it is wired the node lands with no `response` (never a guessed answer).
+        The grounded `response` is filled by `_render_answer` back in `step`, where the OK
+        `tool_results` the policy decided on are in scope - the node itself never guesses a value.
         """
         return _from_decision("Answer", decision)
 
@@ -873,6 +1025,85 @@ class _BreakerClient:
             update()
         except Exception:  # noqa: BLE001 - a best-effort breaker update must never fail a turn
             logger.warning("circuit-breaker state update failed; continuing", exc_info=True)
+
+
+# Localized labels for the grounded ANSWER facts (es/pt). Figures come ONLY from the tool
+# Result; these words carry no figure of their own, so they never affect grounding.
+_FACT_LABELS: dict[str, dict[str, str]] = {
+    "es": {
+        "products": "Tus productos:",
+        "no_products": "No tienes productos contratados.",
+        "balance": "Saldo",
+        "available": "disponible",
+        "converted": "equivale a",
+        "rate": "tasa",
+        "on": "al",
+        "prior_rate": "no había tasa para la fecha solicitada; se usó la tasa anterior más reciente",
+    },
+    "pt": {
+        "products": "Seus produtos:",
+        "no_products": "Você não tem produtos contratados.",
+        "balance": "Saldo",
+        "available": "disponível",
+        "converted": "equivale a",
+        "rate": "taxa",
+        "on": "em",
+        "prior_rate": "não havia taxa para a data solicitada; foi usada a taxa anterior mais recente",
+    },
+}
+
+
+def _num(value: float) -> str:
+    """Format a figure for the facts text (plain `1234.56`); grounding compares numerically."""
+    return f"{value:.2f}" if value != int(value) else str(int(value))
+
+
+def _facts_from_results(tool_results: list[Result], language: str) -> str:
+    """Assemble the grounded `{facts}` string for an ANSWER from this turn's OK tool results.
+
+    Every figure in the returned text (balance, available credit, converted amount, rate, dates,
+    masked number tails) is read straight from a `Result.data` field, so the grounding gate run
+    with the same `tool_results` passes it and blocks any figure the LLM polish might add (REQ-08).
+    The labels are es/pt and figure-free. Returns "" when there is nothing OK to render (the caller
+    fails closed to the tool-unavailable copy).
+    """
+    lab = _FACT_LABELS.get(language, _FACT_LABELS["es"])
+    lines: list[str] = []
+    for result in tool_results:
+        data = result.data
+        if isinstance(data, ProductsData):
+            if not data.products:
+                # An OK but EMPTY list is still a grounded I6 answer: state it explicitly rather
+                # than render a bare header. The copy carries no figure, so grounding is unaffected.
+                lines.append(lab["no_products"])
+                continue
+            items = [
+                f"- {p.product_type} {p.product_number_masked or ''} "
+                f"({p.currency}, {p.product_status})".strip()
+                for p in data.products
+            ]
+            lines.append(lab["products"] + "\n" + "\n".join(items))
+        elif isinstance(data, BalanceData):
+            if data.current_balance is None:
+                continue  # no figure to show; skip rather than render a blank balance
+            parts = [f"{lab['balance']}: {_num(data.current_balance)} {data.currency}"]
+            if data.available_credit is not None:
+                parts.append(f"{_num(data.available_credit)} {data.currency} {lab['available']}")
+            lines.append(", ".join(parts))
+        elif isinstance(data, ConversionData):
+            line = (
+                f"{_num(data.original_amount)} {data.from_currency} {lab['converted']} "
+                f"{_num(data.converted_amount)} {data.to_currency} "
+                f"({lab['rate']} {_num(data.rate)}, {lab['on']} {data.rate_date.isoformat()})"
+            )
+            # REQ-28/ADR-016: when no rate existed for the requested date and the latest prior
+            # rate was substituted, the caller MUST state it (TOOL_CONTRACTS). The flag is a tool
+            # fact (never model-originated); the figure-free wording below carries no new figure,
+            # so it does not affect grounding.
+            if data.used_prior_rate:
+                line += f" — {lab['prior_rate']}"
+            lines.append(line)
+    return "\n".join(lines)
 
 
 # -- module-level node helpers (keep the Orchestrator surface small) -----------------------

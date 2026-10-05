@@ -30,8 +30,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cora.agent.llm import LLMClient, LLMUnavailable, get_llm_client
-from cora.tools.base import mask_pii
+from cora.tools.base import Status, mask_pii
 from cora.tools.layer import ToolLayer
+from cora.tools.models import GetBalanceInput
 
 logger = logging.getLogger("cora.eval.baselines")
 
@@ -83,15 +84,28 @@ class B1NaiveLLM:
         self._client = client if client is not None else get_llm_client()
         self._max_tokens = max_tokens
 
-    def answer(self, utterance: str, language: str, *, tools: ToolLayer) -> B1Result:
+    def answer(
+        self,
+        utterance: str,
+        language: str,
+        *,
+        tools: ToolLayer,
+        referenced_product_id: str | None = None,
+    ) -> B1Result:
         """Answer `utterance` with the customer's own (masked) product data pasted into one prompt.
 
         `tools` is the session-bound `ToolLayer` for THIS scenario's customer - B1 reads products
         through it (per-customer authorization), masks the rendered data AND the utterance, fills
         the versioned prompt and makes one LLM call. The reply is returned verbatim (ungrounded):
         B1 does no grounding/policy/confirmation, which is exactly the behaviour the eval contrasts.
+
+        `referenced_product_id` is set only for an unauthorized-access scenario, so B1 faces the
+        SAME foreign-resource condition as CORA (REQ-41 identical conditions). The read goes through
+        the same session-bound tool layer, so the authorization boundary still denies it
+        (FORBIDDEN/NOT_FOUND) and no foreign data is pasted - the eval surfaces whether the naive
+        agent nonetheless answers about a resource it could not read.
         """
-        pasted, refs = self._render_account_data(tools)
+        pasted, refs = self._render_account_data(tools, referenced_product_id)
         prompt = (
             _prompt_path(language)
             .read_text(encoding="utf-8")
@@ -123,20 +137,32 @@ class B1NaiveLLM:
         )
 
     @staticmethod
-    def _render_account_data(tools: ToolLayer) -> tuple[str, list[str]]:
+    def _render_account_data(
+        tools: ToolLayer, referenced_product_id: str | None = None
+    ) -> tuple[str, list[str]]:
         """Render the customer's products as the masked text B1 pastes into the prompt.
 
         Reuses `ToolLayer.list_products` (product numbers already masked by the tool layer); the
         whole string is run through `mask_pii` again as defence in depth before it reaches the LLM.
         Returns the pasted text and the product source refs (for the run record).
+
+        When `referenced_product_id` is set (an unauthorized-access scenario), B1 attempts to read
+        that product through the SAME session-bound tool layer, so it faces the identical foreign
+        read CORA does. The authorization check denies it (FORBIDDEN/NOT_FOUND), so no foreign
+        balance is pasted - only a denial note - and the session boundary is never weakened.
         """
         result = tools.list_products()
         products = result.data.products if result.data is not None else []
-        if not products:
-            return "(sin productos)", []
         lines = [
             f"- {p.product_type} {p.product_number_masked} ({p.currency}), estado: {p.product_status}"
             for p in products
         ]
         refs = [ref.ref for ref in result.source_refs]
+        if referenced_product_id is not None:
+            # Same foreign read as CORA; the session-bound layer denies it, so nothing leaks.
+            foreign = tools.get_balance(GetBalanceInput(product_id=referenced_product_id))
+            if foreign.status is not Status.OK:
+                lines.append(f"- (acceso denegado al producto solicitado: {foreign.status.value})")
+        if not lines:
+            return "(sin productos)", refs
         return mask_pii("\n".join(lines)), refs

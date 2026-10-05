@@ -64,10 +64,12 @@ Still-open rows, by honest reason (24 total):
   than ≥50 human labels; [`EVALUATION.md`](EVALUATION.md) labels every figure and
   [`LIMITATIONS.md`](LIMITATIONS.md) carries both caveats.
 
-The one known deferred runtime fix — the **live read-ownership gap** (a non-referenced read: POL-090
-never matches, so the engine falls through to POL-999 `abstain` and fails closed, blocking some
-in-scope reads) — is a Phase-4 fix deferred past Phase 7. It is not a separate open matrix row; it is
-documented in [`LIMITATIONS.md`](LIMITATIONS.md) §5 and demonstrated honestly in
+The former **live read-ownership + FX gap** (a non-referenced read or FX turn fell through to
+POL-999 `abstain`) is now **resolved** (branch `fix/live-read-ownership-fx`): ownership is resolved at the
+customer/account level via `list_products` for non-referenced reads, `convert_currency` is wired
+for I5, and the grounded answer is rendered from the same-turn tool results, with the fail-closed
+branches preserved. It is not a separate matrix row; the
+resolution is documented in [`LIMITATIONS.md`](LIMITATIONS.md) §5 and shown in
 [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) Path 3.
 
 Count check: 11 + 3 + 3 + 2 + 2 + 1 + 2 = **24 open rows**, matching the matrix (8 `Planned`
