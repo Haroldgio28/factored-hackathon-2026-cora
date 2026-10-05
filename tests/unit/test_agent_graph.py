@@ -321,3 +321,85 @@ def test_handoff_turn_threads_trace_id_into_the_package(monkeypatch: pytest.Monk
     assert result.handoff_package is not None
     assert result.handoff_package.trace_ref == result.trace_id
     assert result.trace_id
+
+
+# -- explicit UI language choice (input side, REQ-05/REQ-18) ---------------------------
+
+
+def _ban_detect(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make `language.detect` fail the test if it is ever called (proves detection was skipped)."""
+    from cora.nlu import language as language_mod
+
+    def _boom(_text: str):  # noqa: ANN202 - test double, never returns
+        raise AssertionError("language.detect must NOT run when an explicit valid choice is given")
+
+    monkeypatch.setattr(language_mod, "detect", _boom)
+
+
+def test_explicit_language_pt_overrides_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock, owned={"PRD-1"})
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+    _ban_detect(monkeypatch)
+
+    state = orch._store.require(session)  # noqa: SLF001
+    state.referenced_product_id = "PRD-1"
+    # A deliberately Spanish-ish utterance: detection (banned) would say es, but the explicit
+    # choice must win and set the turn language to pt without running the detector at all.
+    result = orch.step(session, "cual es mi saldo", language="pt")
+    assert result.language == "pt"
+    assert state.language == "pt"
+
+
+def test_explicit_language_es_sets_spanish(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock, owned={"PRD-1"})
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+    _ban_detect(monkeypatch)
+
+    state = orch._store.require(session)  # noqa: SLF001
+    state.referenced_product_id = "PRD-1"
+    result = orch.step(session, "quero saber meu saldo", language="es")
+    assert result.language == "es"
+    assert state.language == "es"
+
+
+def test_invalid_language_falls_back_to_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock, owned={"PRD-1"})
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+
+    from cora.nlu import language as language_mod
+
+    real_detect = language_mod.detect
+    seen: list[str] = []
+
+    def _spy(text: str):  # noqa: ANN202 - delegates to the real stub detector
+        seen.append(text)
+        return real_detect(text)
+
+    monkeypatch.setattr(language_mod, "detect", _spy)
+
+    state = orch._store.require(session)  # noqa: SLF001
+    state.referenced_product_id = "PRD-1"
+    # An invalid value ('en') is ignored (not a 422 here, not an error): the detector runs on the
+    # Portuguese utterance and drives the turn language, proving fail-closed fallback.
+    result = orch.step(session, "quero saber meu saldo por favor", language="en")
+    assert seen == ["quero saber meu saldo por favor"]  # detection ran on the raw text
+    assert result.language == "pt"  # the stub detector classified the pt utterance
+
+
+def test_no_language_keeps_detection_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session, _token = _issue_session(clock)
+    orch = _orchestrator(clock, owned={"PRD-1"})
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+
+    state = orch._store.require(session)  # noqa: SLF001
+    state.referenced_product_id = "PRD-1"
+    # No explicit choice (today's behavior): the stub detector classifies the es utterance.
+    result = orch.step(session, "cual es mi saldo por favor")
+    assert result.language == "es"

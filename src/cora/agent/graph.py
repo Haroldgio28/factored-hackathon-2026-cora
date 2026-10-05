@@ -248,6 +248,7 @@ class Orchestrator:
         *,
         proposed_action: Decision | None = None,
         turn_signals: TurnSignals | None = None,
+        language: str | None = None,
     ) -> TurnResult:
         """Run one turn under this session's lock so overlapping same-token requests can't interleave.
 
@@ -257,6 +258,13 @@ class Orchestrator:
         request for the same token cannot flip shared state mid-turn. Different sessions hold
         different locks and still run concurrently; this is per-session isolation, never a global
         serialization of the shared orchestrator.
+
+        `language` is the customer's EXPLICIT UI preference (from the es/pt toggle), passed request-
+        local (never stashed on this shared singleton). It is validated against the detector's
+        closed set (`language.is_supported`): a valid 'es'/'pt' value sets the turn language and
+        SKIPS detection (a deterministic, higher-trust choice than per-turn detection); None, '' or
+        anything invalid is IGNORED and the turn falls back to detection (fail closed). The LLM
+        never influences this - it is deterministic code picking the language.
         """
         with self._session_lock(session.jti):
             return self._step_locked(
@@ -264,6 +272,7 @@ class Orchestrator:
                 utterance,
                 proposed_action=proposed_action,
                 turn_signals=turn_signals,
+                language_choice=language,
             )
 
     def _step_locked(
@@ -273,6 +282,7 @@ class Orchestrator:
         *,
         proposed_action: Decision | None = None,
         turn_signals: TurnSignals | None = None,
+        language_choice: str | None = None,
     ) -> TurnResult:
         """Run one conversation turn through the machine (design section 4, in order).
 
@@ -282,6 +292,8 @@ class Orchestrator:
         decision (REQ-13). `turn_signals` carries the cross-turn escalation inputs the policy
         engine cannot see in one turn (Very-Negative sentiment, a tool that keeps failing); they
         feed `update_turn_signals`, which can escalate on a streak (REQ-15, task 4.5).
+        `language_choice` is the validated explicit UI preference (see `step`); it is applied to
+        the session language before any branch so even a yes/no confirmation turn renders in it.
         """
         # One stable id per turn (stdlib uuid4). Set on EVERY return path below so the trace, the
         # handoff package pointer and the UI all carry the same id (task 5.1, REQ-39). It is a
@@ -297,6 +309,15 @@ class Orchestrator:
 
         state = self._store.require(session)
 
+        # An EXPLICIT, validated UI language choice overrides detection (deterministic, higher
+        # trust) and is applied BEFORE any branch, so even the yes/no confirmation turn below
+        # renders in the chosen language. `language_choice` is untrusted body data: only an exact
+        # supported value ('es'/'pt') is honoured; None/''/invalid is ignored (fail closed) and
+        # the detection path in step 2 still drives the turn.
+        explicit_lang = language.is_supported(language_choice)
+        if explicit_lang:
+            state.language = language_choice
+
         # 1b. Confirm -> Execute -> Verify (task 4.4): while a confirmation is open, THIS turn is
         #     the customer's yes/no. Resolve it deterministically (never the LLM) and execute only
         #     on an explicit affirmative; the policy engine is not consulted for a reply.
@@ -309,9 +330,11 @@ class Orchestrator:
 
         # 2. Language: detect on the raw text, but never let a low-confidence guess flip the
         #    session language (keep it; the generator confirms). Empty/low-confidence -> keep.
-        lang = language.detect(utterance)
-        if not lang.low_confidence:
-            state.language = lang.lang
+        #    An explicit valid UI choice was already applied above and SKIPS detection entirely.
+        if not explicit_lang:
+            lang = language.detect(utterance)
+            if not lang.low_confidence:
+                state.language = lang.lang
 
         # 3. Mask BEFORE anything else reads the utterance; screen the masked text for injection.
         masked = mask_pii(utterance)

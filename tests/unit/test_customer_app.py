@@ -77,6 +77,15 @@ def test_language_toggle_default_is_spanish() -> None:
     assert app.DEFAULT_LANGUAGE in app.LANGUAGES
 
 
+def test_chat_body_includes_the_explicit_language() -> None:
+    import ui.customer_app as app
+
+    # The request body carries the explicit UI language so the server runs the turn in it; identity
+    # still travels only as the token (no customer_id field).
+    body = app._chat_body("tok-123", "quiero mi saldo", "pt")
+    assert body == {"token": "tok-123", "utterance": "quiero mi saldo", "language": "pt"}
+
+
 def test_set_page_config_is_the_first_streamlit_command() -> None:
     # Streamlit raises StreamlitSetPageConfigMustBeFirstCommandError if any `st.` command runs
     # before `st.set_page_config`. The smoke test can't catch it (it never runs the Streamlit

@@ -5,12 +5,9 @@ A bank customer authenticates (mock OTP) and converses with CORA. This view hold
 service over stdlib `urllib` and renders the returned customer-facing text plus its trace id.
 
 Language theme (input side): the customer picks es/pt EXPLICITLY with a widget. That is the user's
-explicit choice, not language detection. The 5.3 `/chat` contract accepts only `{token, utterance}`
-(`extra="forbid"`), so there is no additive-trivial way to thread an explicit language field without
-changing the contract and `Orchestrator.step` - out of scope for 5.4. The lazy correct option is
-therefore UI-side: the UI operates in the chosen language (its copy and the customer's first
-utterance are in that language) and the orchestrator's per-turn detection aligns with it. Threading
-the explicit choice end to end is a documented follow-up (see .agents/tasks/phase5-5.4-notes.md).
+explicit choice, not language detection, and it is sent to `/chat` as `language` so the turn runs
+in the chosen language. The server treats it as a UI PREFERENCE (never identity) and validates it
+fail-closed: an invalid value is ignored and the orchestrator falls back to per-turn detection.
 
 Run with: `uv run streamlit run ui/customer_app.py` (needs the `ui` dependency group). It needs the
 API running: `uv run uvicorn cora.api.app:create_app --factory`. The API base URL comes from
@@ -124,15 +121,25 @@ def authenticate(api_base_url: str, customer_id: str) -> str:
     return str(verify["token"])
 
 
-def send_turn(api_base_url: str, token: str, utterance: str) -> tuple[str, str]:
+def _chat_body(token: str, utterance: str, language: str) -> dict[str, Any]:
+    """Build the `/chat` request body (pure, so request-building is testable without a live call).
+
+    Identity travels ONLY as the session token (the body carries no `customer_id`; the server
+    forbids unknown fields). `language` is the customer's explicit es/pt toggle: a UI preference,
+    not identity, that the server validates fail-closed (an invalid value is ignored there).
+    """
+    return {"token": token, "utterance": utterance, "language": language}
+
+
+def send_turn(api_base_url: str, token: str, utterance: str, language: str) -> tuple[str, str]:
     """Send one chat turn to `/chat` and return the parsed `(response_text, trace_id)`.
 
-    Identity travels only as the session token (the body cannot carry `customer_id`; the server
-    forbids unknown fields). The chosen language is NOT sent: the contract has no language field, so
-    the UI operates in the chosen language and the orchestrator detects it (documented limitation).
+    The customer's explicit es/pt choice is sent as `language` so the turn runs in it (the server
+    validates it fail-closed and falls back to detection on an invalid value); identity still
+    travels only as the session token.
     """
     base = api_base_url.rstrip("/")
-    payload = _post_json(f"{base}/chat", {"token": token, "utterance": utterance})
+    payload = _post_json(f"{base}/chat", _chat_body(token, utterance, language))
     return _parse_chat_response(payload)
 
 
@@ -191,7 +198,7 @@ def main() -> None:
         # slow turn that exceeds the client timeout) are all handled. `thinking` is shown meanwhile.
         with st.chat_message("assistant"), st.spinner(ui_text(language, "thinking")):
             try:
-                response_text, trace_id = send_turn(api_base_url, st.session_state.token, utterance)
+                response_text, trace_id = send_turn(api_base_url, st.session_state.token, utterance, language)
                 st.session_state.history.append(
                     {"role": "assistant", "text": response_text, "trace": trace_id}
                 )

@@ -93,6 +93,13 @@ class ChatRequest(BaseModel):
 
     token: str = Field(min_length=1)
     utterance: str
+    # The customer's explicit es/pt UI preference. A KNOWN optional field, so `extra="forbid"`
+    # still rejects a smuggled unknown field (e.g. `customer_id`) with 422, while a UI toggle is
+    # accepted. It is a PREFERENCE, never identity: `customer_id` still comes only from the token.
+    # Not validated/normalized here - the orchestrator is the single fail-closed validation point
+    # (an invalid value is ignored there and the turn falls back to detection), so the body stays
+    # untrusted data passed straight through.
+    language: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -212,7 +219,7 @@ def create_app(
         except IdentityError as exc:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid session") from exc
 
-        result = deps.orchestrator.step(session, req.utterance)
+        result = deps.orchestrator.step(session, req.utterance, language=req.language)
         response_text = result.response.text if result.response is not None else ""
         outcome = result.response.outcome.value if result.response is not None else None
         return ChatResponse(
