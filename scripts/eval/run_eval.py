@@ -18,8 +18,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 from cora.data.datasource import LocalSource
 from cora.eval.baselines import _prompt_hash as _b1_prompt_hash
@@ -28,7 +31,22 @@ from cora.eval.scenarios import load_scenarios
 from cora.settings import get_settings
 
 
+def _load_bedrock_env() -> None:
+    """Load .env so AWS_BEARER_TOKEN_BEDROCK reaches boto3, and drop an empty AWS_PROFILE.
+
+    Mirrors scripts/aws/verify_bedrock.py and demo_agent_bedrock.py: on this account Bedrock
+    auth is a bearer token (AWS_BEARER_TOKEN_BEDROCK), which boto3 reads from the process env;
+    without load_dotenv() the eval runs fail closed with NoCredentialsError. load_dotenv() also
+    loads the .env's empty `AWS_PROFILE=` as "", which botocore treats as a profile named "" and
+    rejects with ProfileNotFound, so an empty AWS_PROFILE is dropped. A real profile is left alone.
+    """
+    load_dotenv()
+    if not os.environ.get("AWS_PROFILE", "").strip():
+        os.environ.pop("AWS_PROFILE", None)
+
+
 def main() -> int:
+    _load_bedrock_env()
     ap = argparse.ArgumentParser(description="Run B1 and CORA over the held-out suite (task 6.3).")
     ap.add_argument("--suite", type=Path, default=Path("data/eval/scenarios.jsonl"), help="Scenario suite.")
     ap.add_argument("--dest", type=Path, default=Path("data/raw_parquet"), help="Raw landing root.")
@@ -36,6 +54,12 @@ def main() -> int:
     ap.add_argument("--repeats", type=int, default=3, help="Repeats per (scenario, config).")
     ap.add_argument("--fault-rate", type=float, default=0.1, help="Per-read fault probability [0,1].")
     ap.add_argument("--seed", type=int, default=42, help="Fault seed (whole run reproduces from it).")
+    ap.add_argument(
+        "--pace",
+        type=float,
+        default=0.0,
+        help="Seconds to sleep after each turn (quota pacing for real Bedrock; 0 = no pacing).",
+    )
     args = ap.parse_args()
 
     if not args.suite.exists():
@@ -61,6 +85,7 @@ def main() -> int:
         seed=args.seed,
         fault_rate=args.fault_rate,
         versions=versions,
+        pace_s=args.pace,
     )
     write_runs(records, args.out)
     print(

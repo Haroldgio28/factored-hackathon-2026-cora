@@ -208,12 +208,19 @@ def run_suite(
     fault_rate: float = 0.1,
     versions: RunVersions,
     now: datetime | None = None,
+    pace_s: float = 0.0,
 ) -> list[RunRecord]:
     """Run the suite through each config, `repeats` times, with faults on; return the run records.
 
     `source` is the `DataSource` the real tools read; `versions` carries the REQ-44 provenance to
     stamp on every record. `now` fixes the harness clock (defaults to a fixed epoch so a run is
     reproducible). Latency is `time.perf_counter` around the single `step`/`answer` call.
+
+    `pace_s` sleeps that many seconds AFTER each turn (outside the timed region, so latency is
+    unaffected). It defaults to 0.0 - a no-op for tests and the stub - and is set >0 only for a
+    real-Bedrock run to stay under a low per-minute quota and avoid throttling turns into template
+    fallback (which would silently contaminate the real numbers). ponytail: one stdlib sleep, not a
+    rate-limiter class.
     """
     base_now = now or datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
     records: list[RunRecord] = []
@@ -257,6 +264,8 @@ def run_suite(
                         **extra,  # type: ignore[arg-type]
                     )
                 )
+                if pace_s > 0.0:
+                    time.sleep(pace_s)  # outside the timed region: quota pacing, not latency
     return records
 
 

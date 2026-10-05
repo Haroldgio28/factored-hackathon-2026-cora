@@ -141,6 +141,23 @@ _INJECTION_SUFFIX = {
 # none, the builder falls back to this closed set so stratification is still exercised.
 _SEGMENTS: tuple[str, ...] = ("Mass", "Affluent", "SME")
 
+# The real `customers.country` holds full names; the suite strata use MX/CO/AR codes. Map both the
+# full names and the codes themselves so a code-valued fixture still resolves.
+_COUNTRY_CODES: dict[str, str] = {
+    "mexico": "MX",
+    "méxico": "MX",
+    "mx": "MX",
+    "colombia": "CO",
+    "co": "CO",
+    "argentina": "AR",
+    "ar": "AR",
+}
+
+
+def _country_code(value: object) -> str:
+    """Map a raw country value (full name or code) to MX/CO/AR, else "" for the seeded fallback."""
+    return _COUNTRY_CODES.get(str(value or "").strip().lower(), "")
+
 
 @dataclass(frozen=True)
 class SuiteManifest:
@@ -182,7 +199,7 @@ def _sample_customers(source: DataSource, rng: random.Random, needed: int) -> li
     """
     customers = source.fetch_df(
         "customers",
-        columns=["customer_id", "country", "customer_segment"],
+        columns=["customer_id", "country", "segment"],
         limit=max(needed * 2, 1000),
     )
     products = source.fetch_df(
@@ -198,9 +215,8 @@ def _sample_customers(source: DataSource, rng: random.Random, needed: int) -> li
     pool: list[_Customer] = []
     for i, row in enumerate(customers.to_dict("records")):
         cid = str(row["customer_id"])
-        country = str(row.get("country") or "")
-        country = country if country in {"MX", "CO", "AR"} else ("MX", "CO", "AR")[i % 3]
-        segment = str(row.get("customer_segment") or "") or _SEGMENTS[i % len(_SEGMENTS)]
+        country = _country_code(row.get("country")) or ("MX", "CO", "AR")[i % 3]
+        segment = str(row.get("segment") or "") or _SEGMENTS[i % len(_SEGMENTS)]
         pool.append(_Customer(cid, country, segment, product_by_customer.get(cid)))
 
     if not pool:

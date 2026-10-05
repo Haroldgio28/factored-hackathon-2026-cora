@@ -1,0 +1,55 @@
+{
+  "by_category": [
+    {
+      "aht_seconds": 539.9350494881271,
+      "category": "Comercial",
+      "fcr": 0.6520891415659906,
+      "fcr_denominator": 54879,
+      "fcr_numerator": 35786,
+      "n": 54879
+    },
+    {
+      "aht_seconds": 266.38199993829255,
+      "category": "Producto",
+      "fcr": 0.8962634973452736,
+      "fcr_denominator": 150863,
+      "fcr_numerator": 135213,
+      "n": 150863
+    },
+    {
+      "aht_seconds": 434.6059149979648,
+      "category": "Queja",
+      "fcr": 0.43599866690593997,
+      "fcr_denominator": 117021,
+      "fcr_numerator": 51021,
+      "n": 117021
+    },
+    {
+      "aht_seconds": 479.23970313296695,
+      "category": "Retención",
+      "fcr": 0.6016133735056857,
+      "fcr_denominator": 20578,
+      "fcr_numerator": 12380,
+      "n": 20578
+    },
+    {
+      "aht_seconds": 220.8028237231492,
+      "category": "Transaccional",
+      "fcr": 0.9150823141267038,
+      "fcr_denominator": 240056,
+      "fcr_numerator": 219671,
+      "n": 240056
+    },
+    {
+      "aht_seconds": 360.46237555512863,
+      "category": "Técnico",
+      "fcr": 0.699316805799862,
+      "fcr_denominator": 102899,
+      "fcr_numerator": 71959,
+      "n": 102899
+    }
+  ],
+  "escalation_signal": "not used (was_escalated is a ~flat synthetic artefact, not ground truth)",
+  "label": "offline measurement",
+  "note": "Historical human-agent baseline, not comparable 1:1 with CORA's SAR: different population, full range of human-handled contacts, measured from historical records."
+}

@@ -1,0 +1,445 @@
+{
+  "dimensions": {
+    "country": {
+      "b1": {
+        "gaps": {
+          "escalation_recall": {
+            "best": {
+              "subgroup": "CO",
+              "value": 0.0
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.0,
+            "worst": {
+              "subgroup": "CO",
+              "value": 0.0
+            }
+          },
+          "sar_rate": {
+            "best": {
+              "subgroup": "MX",
+              "value": 1.0
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.04761904761904767,
+            "worst": {
+              "subgroup": "CO",
+              "value": 0.9523809523809523
+            }
+          },
+          "unsafe_rate": {
+            "best": {
+              "subgroup": "MX",
+              "value": 0.5625
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.0625,
+            "worst": {
+              "subgroup": "CO",
+              "value": 0.5
+            }
+          }
+        },
+        "subgroups": [
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2075.62954997411,
+            "n_records": 14,
+            "sar_rate": 1.0,
+            "small_sample": true,
+            "subgroup": "AR",
+            "unsafe_rate": 1.0
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2285.5589000391774,
+            "n_records": 37,
+            "sar_rate": 0.9523809523809523,
+            "small_sample": false,
+            "subgroup": "CO",
+            "unsafe_rate": 0.5
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2219.931599975098,
+            "n_records": 47,
+            "sar_rate": 1.0,
+            "small_sample": false,
+            "subgroup": "MX",
+            "unsafe_rate": 0.5625
+          }
+        ]
+      },
+      "cora": {
+        "gaps": {
+          "escalation_recall": {
+            "best": {
+              "subgroup": "MX",
+              "value": 0.7777777777777778
+            },
+            "computable": true,
+            "flagged": true,
+            "spread": 0.34920634920634924,
+            "worst": {
+              "subgroup": "CO",
+              "value": 0.42857142857142855
+            }
+          },
+          "sar_rate": {
+            "best": {
+              "subgroup": "MX",
+              "value": 0.4838709677419355
+            },
+            "computable": true,
+            "flagged": true,
+            "spread": 0.24577572964669742,
+            "worst": {
+              "subgroup": "CO",
+              "value": 0.23809523809523808
+            }
+          },
+          "unsafe_rate": {
+            "best": {
+              "subgroup": "CO",
+              "value": 0.26666666666666666
+            },
+            "computable": true,
+            "flagged": true,
+            "spread": 0.14166666666666666,
+            "worst": {
+              "subgroup": "MX",
+              "value": 0.125
+            }
+          }
+        },
+        "subgroups": [
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 1.0,
+            "latency_p50_ms": 6446.666000003461,
+            "n_records": 14,
+            "sar_rate": 0.5,
+            "small_sample": true,
+            "subgroup": "AR",
+            "unsafe_rate": 0.0
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.42857142857142855,
+            "latency_p50_ms": 7383.8090999634005,
+            "n_records": 37,
+            "sar_rate": 0.23809523809523808,
+            "small_sample": false,
+            "subgroup": "CO",
+            "unsafe_rate": 0.26666666666666666
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.7777777777777778,
+            "latency_p50_ms": 6970.951800001785,
+            "n_records": 47,
+            "sar_rate": 0.4838709677419355,
+            "small_sample": false,
+            "subgroup": "MX",
+            "unsafe_rate": 0.125
+          }
+        ]
+      }
+    },
+    "language": {
+      "b1": {
+        "gaps": {
+          "escalation_recall": {
+            "best": {
+              "subgroup": "es",
+              "value": 0.0
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.0,
+            "worst": {
+              "subgroup": "es",
+              "value": 0.0
+            }
+          },
+          "sar_rate": {
+            "best": {
+              "subgroup": "pt",
+              "value": 1.0
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.033333333333333326,
+            "worst": {
+              "subgroup": "es",
+              "value": 0.9666666666666667
+            }
+          },
+          "unsafe_rate": {
+            "best": {
+              "subgroup": "pt",
+              "value": 0.6
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.04999999999999993,
+            "worst": {
+              "subgroup": "es",
+              "value": 0.55
+            }
+          }
+        },
+        "subgroups": [
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2269.7385999490507,
+            "n_records": 49,
+            "sar_rate": 0.9666666666666667,
+            "small_sample": false,
+            "subgroup": "es",
+            "unsafe_rate": 0.55
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2156.238499970641,
+            "n_records": 49,
+            "sar_rate": 1.0,
+            "small_sample": false,
+            "subgroup": "pt",
+            "unsafe_rate": 0.6
+          }
+        ]
+      },
+      "cora": {
+        "gaps": {
+          "escalation_recall": {
+            "best": {
+              "subgroup": "es",
+              "value": 0.7
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.033333333333333326,
+            "worst": {
+              "subgroup": "pt",
+              "value": 0.6666666666666666
+            }
+          },
+          "sar_rate": {
+            "best": {
+              "subgroup": "es",
+              "value": 0.4
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.0,
+            "worst": {
+              "subgroup": "es",
+              "value": 0.4
+            }
+          },
+          "unsafe_rate": {
+            "best": {
+              "subgroup": "pt",
+              "value": 0.2
+            },
+            "computable": true,
+            "flagged": false,
+            "spread": 0.04210526315789476,
+            "worst": {
+              "subgroup": "es",
+              "value": 0.15789473684210525
+            }
+          }
+        },
+        "subgroups": [
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.7,
+            "latency_p50_ms": 7397.83739997074,
+            "n_records": 49,
+            "sar_rate": 0.4,
+            "small_sample": false,
+            "subgroup": "es",
+            "unsafe_rate": 0.15789473684210525
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.6666666666666666,
+            "latency_p50_ms": 6971.683699986897,
+            "n_records": 49,
+            "sar_rate": 0.4,
+            "small_sample": false,
+            "subgroup": "pt",
+            "unsafe_rate": 0.2
+          }
+        ]
+      }
+    },
+    "segment": {
+      "b1": {
+        "gaps": {
+          "escalation_recall": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          },
+          "sar_rate": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          },
+          "unsafe_rate": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          }
+        },
+        "subgroups": [
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2127.123800048139,
+            "n_records": 63,
+            "sar_rate": 0.975609756097561,
+            "small_sample": false,
+            "subgroup": "Basic",
+            "unsafe_rate": 0.5909090909090909
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2372.4901000387035,
+            "n_records": 19,
+            "sar_rate": 1.0,
+            "small_sample": true,
+            "subgroup": "Plus",
+            "unsafe_rate": 0.5
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2168.7511999625713,
+            "n_records": 9,
+            "sar_rate": 1.0,
+            "small_sample": true,
+            "subgroup": "Premium",
+            "unsafe_rate": 0.6
+          },
+          {
+            "config": "b1",
+            "escalation_precision": null,
+            "escalation_recall": 0.0,
+            "latency_p50_ms": 2285.5589000391774,
+            "n_records": 7,
+            "sar_rate": 1.0,
+            "small_sample": true,
+            "subgroup": "Student",
+            "unsafe_rate": 0.5
+          }
+        ]
+      },
+      "cora": {
+        "gaps": {
+          "escalation_recall": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          },
+          "sar_rate": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          },
+          "unsafe_rate": {
+            "best": null,
+            "computable": false,
+            "flagged": false,
+            "spread": null,
+            "worst": null
+          }
+        },
+        "subgroups": [
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.75,
+            "latency_p50_ms": 6954.356000002008,
+            "n_records": 63,
+            "sar_rate": 0.4146341463414634,
+            "small_sample": false,
+            "subgroup": "Basic",
+            "unsafe_rate": 0.14285714285714285
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.5,
+            "latency_p50_ms": 7255.539799982216,
+            "n_records": 19,
+            "sar_rate": 0.3076923076923077,
+            "small_sample": true,
+            "subgroup": "Plus",
+            "unsafe_rate": 0.25
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 0.3333333333333333,
+            "latency_p50_ms": 6863.667899975553,
+            "n_records": 9,
+            "sar_rate": 1.0,
+            "small_sample": true,
+            "subgroup": "Premium",
+            "unsafe_rate": 0.4
+          },
+          {
+            "config": "cora",
+            "escalation_precision": 1.0,
+            "escalation_recall": 1.0,
+            "latency_p50_ms": 7554.713300021831,
+            "n_records": 7,
+            "sar_rate": 0.0,
+            "small_sample": true,
+            "subgroup": "Student",
+            "unsafe_rate": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "label": "offline measurement",
+  "min_n": 30,
+  "rate_tolerance": 0.1
+}

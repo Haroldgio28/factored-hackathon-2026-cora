@@ -55,12 +55,16 @@ def compute_b0(source: DataSource) -> dict[str, object]:
     rel = source._source(_TABLE)
     # One bounded GROUP BY: resolved/total for FCR, mean duration for AHT, per category. The result
     # is one row per reason_category (a tiny table), so nothing large reaches Python.
+    # The raw landing stores every column as VARCHAR (typing happens in the curated/contracts
+    # layer), so was_resolved ('True'/'False') and duration_seconds ('603.0') are cast here.
+    # TRY_CAST turns any malformed value into NULL rather than raising, matching the landing's
+    # fail-soft typing; a NULL is then excluded by count()/avg() exactly like a missing value.
     sql = (  # noqa: S608 - no user input; table/columns are literals from the contract
         f"SELECT {_CATEGORY} AS category, "
         "count(*) AS n, "
-        "count(*) FILTER (WHERE was_resolved) AS resolved, "
-        "count(was_resolved) AS resolved_known, "
-        "avg(duration_seconds) AS aht_seconds "
+        "count(*) FILTER (WHERE TRY_CAST(was_resolved AS BOOLEAN)) AS resolved, "
+        "count(TRY_CAST(was_resolved AS BOOLEAN)) AS resolved_known, "
+        "avg(TRY_CAST(duration_seconds AS DOUBLE)) AS aht_seconds "
         f"FROM {rel} "
         f"WHERE {_CATEGORY} IS NOT NULL "
         f"GROUP BY {_CATEGORY} ORDER BY {_CATEGORY}"

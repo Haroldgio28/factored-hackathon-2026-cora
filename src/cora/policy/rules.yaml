@@ -18,8 +18,8 @@ thresholds:
   tau_fraud: 70.0
   # intent confidence below tau_escalate escalates (POL-060); below tau_clarify asks one
   # clarifying question (POL-070). tau_clarify >= tau_escalate by construction.
-  tau_escalate: 0.40
-  tau_clarify: 0.60
+  tau_escalate: 0.0
+  tau_clarify: 0.55
 
 # Explicit allow-list: each supported intent maps to the decisions the LLM is permitted to
 # propose for it (REQ-13). A proposal outside this set is REJECTED; the engine still decides
