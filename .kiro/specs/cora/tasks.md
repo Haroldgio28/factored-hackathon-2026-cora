@@ -174,11 +174,12 @@ Rules for every task:
 ## Phase 6 - Evaluation (Days 7-9)
 
 - [ ] **6.1 Scenario builder** - ~400 held-out cases per design §9 with deterministic reference outcomes; fixed seed; `scenarios.jsonl` versioned. _Requirements: REQ-42_
+- [ ] **6.1b Re-derive operational confidence thresholds** - select `τ_escalate` / `τ_clarify` (POL-060/070/090 bands) on the held-out suite and update `src/cora/policy/rules.yaml`, then re-freeze `data/nlu/thresholds.json`. **Why this is a real step, not a formality:** the Phase-3 cost-matrix sweep (3.6) returned a **degenerate** pair (`τ_escalate = τ_clarify = 0.0`) on the small 480-row gold split - with τ=0 the POL-060/POL-070 low-confidence bands never fire, so nothing routes to clarify/escalate by confidence. `rules.yaml` therefore ships a conservative **stand-in** (`τ_escalate=0.40`, `τ_clarify=0.60`); these are NOT operational values. This is exactly why "ayuda con mi cuenta" could misroute in a live turn. Fix: re-derive on the REQ-42 held-out scenarios (new data, not the gold set), keeping the invariant `τ_escalate ≤ τ_clarify` and the freeze-before-test discipline (REQ-47). Evidence: updated `rules.yaml` + `thresholds.json` + a note in `EVALUATION.md`. _Requirements: REQ-32, REQ-42, REQ-47_
 - [ ] **6.2 Naive baseline B1** - single-prompt LLM with pasted data. _Requirements: REQ-41_
 - [ ] **6.3 Runner** - B1 and CORA ×3 repeats, fault injection on. _Requirements: REQ-41, REQ-44_
 - [ ] **6.4 Deterministic judges** - facts, policy compliance, disclosure/authorization, action verification, escalation correctness, handoff completeness. _Requirements: REQ-43_
 - [ ] **6.5 LLM judge + validation** - rubric doc; 50 human labels; agreement. _Requirements: REQ-45_
-- [ ] **6.6 Metrics & statistics** - SAR, attempted share, containment, escalation P/R (missed/unnecessary), unsafe with CI and rule of three, p50/p95, cost per attempted/per SAR. _Requirements: REQ-43_
+- [ ] **6.6 Metrics & statistics** - SAR, attempted share, containment, escalation P/R (missed/unnecessary), unsafe with CI and rule of three, p50/p95, cost per attempted/per SAR. Escalation P/R depends on the operational thresholds re-derived in **6.1b** (the Phase-3 stand-in would skew missed/unnecessary-escalation counts), so run 6.1b first. _Requirements: REQ-43_
 - [ ] **6.7 Fairness breakdown** - by language, country/accent, segment; disparity investigation. _Requirements: REQ-46_
 - [ ] **6.8 Historical baseline B0** - FCR/AHT from data, labeled historical. _Requirements: REQ-41, REQ-47_
 - [ ] **6.9 Evaluation report** - `documentation/reports/EVALUATION.md`: setup, versions, results, failures, error analysis, labeled evidence types. _Requirements: REQ-44, REQ-47_
