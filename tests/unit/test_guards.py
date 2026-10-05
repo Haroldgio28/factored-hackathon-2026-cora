@@ -81,7 +81,7 @@ def _orchestrator(clock: _Clock) -> Orchestrator:
 
 
 def _patch_intent(monkeypatch: pytest.MonkeyPatch, intent: Intent, confidence: float) -> None:
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (intent, confidence))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (intent, confidence))
 
 
 # -- credit guard: abstain_route CREDIT_OUT_OF_SCOPE, no credit decision (REQ-33) ------

@@ -192,6 +192,8 @@ Docs/
 !/data/
 /data/*
 !/data/nlu/
+# ...but never the downloaded fastText language-id model weights (cached on demand, ~900 KB).
+/data/nlu/lid.176.*
 
 # Workflow/agent scratch directory (orchestration tooling, not project source)
 .agents/

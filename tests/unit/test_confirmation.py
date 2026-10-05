@@ -132,7 +132,7 @@ def _orchestrator(
 
 
 def _patch_intent(monkeypatch: pytest.MonkeyPatch, intent: Intent | None, confidence: float) -> None:
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (intent, confidence))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (intent, confidence))
 
 
 def _confirm_turn(orch: Orchestrator, session: Session) -> None:

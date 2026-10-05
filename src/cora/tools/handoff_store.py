@@ -13,10 +13,15 @@ import uuid
 from typing import Protocol
 
 
+def new_case_id() -> str:
+    """Mint an opaque `CASE-...` id (shared so a caller can reserve the id before persisting)."""
+    return "CASE-" + uuid.uuid4().hex[:12].upper()
+
+
 class HandoffStore(Protocol):
     """Persists a handoff package and returns an opaque case id."""
 
-    def create(self, package: dict[str, object]) -> str: ...
+    def create(self, package: dict[str, object], *, case_id: str | None = None) -> str: ...
 
 
 class InMemoryHandoffStore:
@@ -25,7 +30,7 @@ class InMemoryHandoffStore:
     def __init__(self) -> None:
         self.cases: dict[str, dict[str, object]] = {}
 
-    def create(self, package: dict[str, object]) -> str:
-        case_id = "CASE-" + uuid.uuid4().hex[:12].upper()
+    def create(self, package: dict[str, object], *, case_id: str | None = None) -> str:
+        case_id = case_id or new_case_id()
         self.cases[case_id] = dict(package)
         return case_id

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     "boto3==1.43.106",
+    "fastapi==0.142.2",
     "pandas==2.2.3",
     "pandera==0.20.4",
     "pydantic-settings==2.15.0",
@@ -16,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx==0.28.1",
     "pytest==9.1.1",
     "ruff==0.16.9",
 ]
@@ -37,6 +39,7 @@ nlu = [
 ]
 ui = [
     "streamlit==1.40.1",
+    "uvicorn==0.54.0",
 ]
 
 [build-system]
@@ -63,6 +66,9 @@ select = ["E", "F", "I", "UP", "B"]
 # The injection screen is one alternation regex per rule (es+pt+en). Same rationale as the
 # keyword baseline: a rule's regex cannot wrap without hurting readability.
 "src/cora/nlu/injection.py" = ["E501"]
+# FastAPI's dependency-injection idiom puts `Depends(...)` in parameter defaults; B008 flags that
+# generically, but it is the framework's documented, intended pattern for route handlers.
+"src/cora/api/app.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

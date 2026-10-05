@@ -177,7 +177,7 @@ def _orchestrator(clock: _Clock, store: InMemoryHandoffStore, *, owned: set[str]
 
 
 def _patch_intent(monkeypatch: pytest.MonkeyPatch, intent: Intent, confidence: float = 0.99) -> None:
-    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text: (intent, confidence))
+    monkeypatch.setattr(Orchestrator, "_classify", lambda self, text, language: (intent, confidence))
 
 
 @pytest.mark.parametrize(
@@ -223,7 +223,7 @@ def test_e1_dispute_offers_freeze_and_promises_no_outcome(monkeypatch: pytest.Mo
     monkeypatch.setattr(
         Orchestrator,
         "_build_policy_input",
-        lambda self, **kw: (_fraud_policy_input(kw), []),
+        lambda self, **kw: (_fraud_policy_input(kw), [], False),
     )
 
     result = orch.step(session, "no reconozco este cargo")

@@ -93,6 +93,16 @@ def test_package_has_all_req16_fields_from_verified_facts() -> None:
     assert package.created_at == _NOW
 
 
+def test_package_carries_trace_ref_when_provided() -> None:
+    # Task 5.1: the turn trace_id is threaded into the package so a human/UI can pull the trace.
+    state = _state_with_turn("hola")
+    package = build_package(state, [], HandoffReason.HUMAN_REQUEST, trace_ref="abc123def456", now=_NOW)
+    assert package.trace_ref == "abc123def456"
+    assert package.to_store_dict()["trace_ref"] == "abc123def456"
+    # Default is empty when no trace id is threaded in.
+    assert build_package(state, [], HandoffReason.HUMAN_REQUEST, now=_NOW).trace_ref == ""
+
+
 def test_priority_high_on_fraud() -> None:
     state = _state_with_turn("creo que es fraude")
     package = build_package(state, [_balance_result()], HandoffReason.FRAUD, now=_NOW)

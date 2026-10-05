@@ -25,6 +25,7 @@ heads degrade through the same object; the only difference is whether inputs are
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 import joblib
@@ -35,13 +36,19 @@ from cora.nlu.labels import Intent
 
 __all__ = [
     "CALIBRATION_METHOD",
+    "DEFAULT_HEAD_PATH",
     "IntentClassifier",
     "fit_embedding_classifier",
     "fit_tfidf_classifier",
+    "learned_intent",
 ]
 
 CALIBRATION_METHOD = "sigmoid"  # D2: Platt, not isotonic - small N per class
 _CV = 5  # CalibratedClassifierCV folds; train has 20/class, so >=5 per class is satisfied
+
+# The committed calibrated embedding head (task 3.5/3.6). The encoder is referenced by id in the
+# model card (not committed); only this few-hundred-KB head lives in the repo.
+DEFAULT_HEAD_PATH = Path("data/nlu/intent_head.joblib")
 
 
 def _calibrated_logreg():  # noqa: ANN202 - sklearn estimator
@@ -105,3 +112,41 @@ def fit_tfidf_classifier(utterances: list[str], labels: list[str]) -> IntentClas
     est = Pipeline([("tfidf", build_tfidf()), ("clf", _calibrated_logreg())])
     est.fit(utterances, labels)
     return IntentClassifier(est, embedded=False)
+
+
+@lru_cache(maxsize=1)
+def _load_head(path: str) -> IntentClassifier:
+    """Load the committed calibrated head once (joblib). Cached so a turn never re-reads the file."""
+    return IntentClassifier.load(path)
+
+
+def learned_intent(
+    masked_utterance: str, language: str, *, path: Path | str = DEFAULT_HEAD_PATH
+) -> tuple[Intent, float]:
+    """Classify a masked utterance with the trained calibrated head (task 5.3 wiring).
+
+    Embeds the utterance through the frozen `encode` seam (the deterministic `StubEncoder` under
+    `CORA_NLU_STUB=1`, so no download/network in tests) and runs the lazily-loaded calibrated head,
+    returning `(argmax Intent, its calibrated probability)`. `language` is unused by the embedding
+    head (the multilingual space is language-agnostic) but kept so the signature matches the
+    `(utterance, language)` classifier seam the orchestrator calls and the keyword fallback shares.
+
+    Raising on a missing/corrupt artifact or an encode/inference error is intentional: the
+    orchestrator's `_classify` catches it and FAILS CLOSED to `keyword_fallback_intent` (REQ-40).
+    """
+    head = _load_head(str(path))
+    proba = head.predict_proba(encode([masked_utterance]))[0]
+    idx = int(np.argmax(proba))
+    return head.classes_[idx], float(proba[idx])
+
+
+if __name__ == "__main__":  # self-check: the committed head loads with the expected label vocab
+    # The 384-d MiniLM encoder is required to RUN the head (the 64-d stub mismatches by design),
+    # so this offline self-check only asserts the committed artifact loads and carries the full
+    # 16-label vocabulary. The orchestrator uses `learned_intent` only when the real encoder is
+    # active and falls back to the keyword baseline otherwise (and in stub tests).
+    head = _load_head(str(DEFAULT_HEAD_PATH))
+    assert head.embedded is True, "the committed head is the embedding head"
+    assert len(head.classes_) == 16, head.classes_
+    assert all(isinstance(c, Intent) for c in head.classes_)
+    print(f"classifier head-load self-check OK: {len(head.classes_)} labels")
