@@ -33,3 +33,7 @@ __all__ = [
     "load_scenarios",
     "write_scenarios",
 ]
+
+# ponytail: the baselines/faults/runner symbols are imported from their own modules at use sites
+# (and in the scripts/tests), not re-exported here, to avoid dragging the agent/orchestrator import
+# chain into every `import cora.eval` - the scenario surface above is the stable package API.
