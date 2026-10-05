@@ -168,6 +168,46 @@ def test_chat_with_valid_token_runs_a_turn_and_returns_trace_id(client: TestClie
     assert body["outcome"] is not None
 
 
+# -- /chat explicit language choice (input side, REQ-05/REQ-18) ------------------------
+
+
+def test_chat_explicit_pt_overrides_a_spanish_ish_utterance(client: TestClient) -> None:
+    """An explicit `language='pt'` sets the turn language to pt even for a Spanish-ish utterance.
+
+    The toggle is a UI preference, deterministic and higher-trust than per-turn detection; the
+    body carries no identity, so this never widens access (customer_id still comes from the token).
+    """
+    token = _authenticate(client)
+    resp = client.post("/chat", json={"token": token, "utterance": "cual es mi saldo", "language": "pt"})
+    assert resp.status_code == 200, resp.text
+    session = client.app.state.deps.identity.verify_token(token)
+    assert client.app.state.deps.store.require(session).language == "pt"  # noqa: SLF001
+
+
+def test_chat_explicit_es_runs_in_spanish(client: TestClient) -> None:
+    token = _authenticate(client)
+    resp = client.post("/chat", json={"token": token, "utterance": "quero saber meu saldo", "language": "es"})
+    assert resp.status_code == 200, resp.text
+    session = client.app.state.deps.identity.verify_token(token)
+    assert client.app.state.deps.store.require(session).language == "es"  # noqa: SLF001
+
+
+def test_chat_invalid_language_is_ignored_and_falls_back_to_detection(client: TestClient) -> None:
+    """An invalid `language` ('en') is a known optional field with a bad value: NOT a 422.
+
+    It is ignored (fail closed) and the turn falls back to detection, which classifies the
+    Portuguese utterance as pt - proving detection, not the invalid value, drove the turn.
+    """
+    token = _authenticate(client)
+    resp = client.post(
+        "/chat",
+        json={"token": token, "utterance": "quero saber meu saldo por favor", "language": "en"},
+    )
+    assert resp.status_code == 200, resp.text  # not a 422: the field is known, the value invalid
+    session = client.app.state.deps.identity.verify_token(token)
+    assert client.app.state.deps.store.require(session).language == "pt"  # noqa: SLF001
+
+
 # -- /chat fail-closed on a bad token --------------------------------------------------
 
 

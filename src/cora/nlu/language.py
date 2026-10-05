@@ -31,13 +31,28 @@ from pathlib import Path
 
 logger = logging.getLogger("cora.nlu.language")
 
-__all__ = ["LanguageResult", "detect", "stub_enabled"]
+__all__ = ["SUPPORTED", "LanguageResult", "detect", "is_supported", "stub_enabled"]
 
 # Normalized output vocabulary. Anything the backend returns that is not es/pt collapses to OTHER;
 # the policy/agent layer treats OTHER like low confidence (keep session language, confirm).
 _ES = "es"
 _PT = "pt"
 _OTHER = "other"
+
+# The closed set of languages the channel supports, as a single source of truth for every caller
+# that must VALIDATE a language value (not just normalize a detector reply) - the API body and the
+# orchestrator's explicit-choice path both check against this, so there is one list, not two.
+SUPPORTED: tuple[str, str] = (_ES, _PT)
+
+
+def is_supported(lang: str | None) -> bool:
+    """True only for an exact supported value ('es' or 'pt'); None/empty/other/wrong case -> False.
+
+    Used to validate an EXPLICIT language preference fail-closed: anything that is not an exact
+    member of `SUPPORTED` is rejected so the caller falls back to detection (never guesses).
+    """
+    return lang in SUPPORTED
+
 
 # Below this the detection is treated as unreliable -> low_confidence=True (confirm, don't guess).
 _MIN_CONFIDENCE = 0.60
