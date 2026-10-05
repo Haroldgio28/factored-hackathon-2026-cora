@@ -24,13 +24,14 @@ this subtask - that group lands at 3.4 (ponytail: stdlib arithmetic beats a forw
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
 
 from cora.nlu.labels import Intent, Provenance, Variant
 
-__all__ = ["COLUMNS", "GoldSetError", "check_pairing", "cohen_kappa", "load"]
+__all__ = ["COLUMNS", "GoldSetError", "check_pairing", "cohen_kappa", "cohen_kappa_pairs", "load"]
 
 # Exact column order of data/nlu/gold.tsv and gold_pt.tsv (plan NIT-3: scenario_id and month are
 # their own explicit columns, not parsed out of `id`).
@@ -189,13 +190,27 @@ def cohen_kappa(df: pd.DataFrame) -> float:
     n = len(subset)
     if n == 0:
         raise GoldSetError("no double-labeled rows; cannot compute Cohen's kappa")
+    return cohen_kappa_pairs(subset["intent"].tolist(), subset["label_b"].tolist())
 
-    a = subset["intent"].tolist()
-    b = subset["label_b"].tolist()
+
+def cohen_kappa_pairs(a: Sequence[object], b: Sequence[object]) -> float:
+    """Cohen's κ between two equal-length label sequences (the shared counting formula).
+
+    κ = (p_o - p_e) / (1 - p_e), where p_o is observed agreement and p_e the agreement expected by
+    chance from each rater's label marginals. Returns 1.0 when both raters used a single identical
+    label (p_e == 1, perfect by convention). Raises `GoldSetError` on empty or unequal-length input
+    so a missing comparison is loud, not a silent nan. The gold-set loader (`cohen_kappa`) and the
+    eval judge-validation harness (6.5) both call this one implementation rather than re-deriving κ.
+    """
+    if len(a) != len(b):
+        raise GoldSetError(f"kappa needs equal-length sequences, got {len(a)} and {len(b)}")
+    n = len(a)
+    if n == 0:
+        raise GoldSetError("no label pairs; cannot compute Cohen's kappa")
     p_o = sum(1 for x, y in zip(a, b, strict=True) if x == y) / n
     count_a = Counter(a)
     count_b = Counter(b)
     p_e = sum(count_a[label] * count_b[label] for label in set(count_a) | set(count_b)) / (n * n)
     if p_e == 1.0:
-        return 1.0  # both annotators used a single, identical label; perfect agreement by convention
+        return 1.0  # both raters used a single, identical label; perfect agreement by convention
     return (p_o - p_e) / (1 - p_e)
