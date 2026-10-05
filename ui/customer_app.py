@@ -78,6 +78,26 @@ def trace_label(trace_id: object) -> str:
     return f"trace: {trace_id}" if trace_id else "trace: (none)"
 
 
+def login_submission(submitted: bool, customer_id: str) -> bool:
+    """Decide whether to attempt auth this run: only on an atomic submit with a non-blank id.
+
+    Pure so the one-click login decision is testable without Streamlit. Driving auth off this
+    predicate (fed by `st.form_submit_button`, which submits the typed value atomically on the
+    first click) fixes the stale-`st.button` rerun bug where the first click did nothing.
+    """
+    return bool(submitted and customer_id.strip())
+
+
+def login_succeeded(token: object) -> bool:
+    """Decide whether the just-run auth attempt produced a usable session token.
+
+    Pure so the "repaint the authenticated view now" decision is testable without Streamlit.
+    Storing the token does not restart `main()` by itself, so a successful first-click submit must
+    trigger an explicit rerun; a `None`/blank token (error path) stays on the login screen.
+    """
+    return bool(token)
+
+
 def _parse_chat_response(payload: dict[str, Any]) -> tuple[str, str]:
     """Extract `(response_text, trace_id)` from a `/chat` JSON body (the 5.3 ChatResponse shape).
 
@@ -172,14 +192,23 @@ def main() -> None:
 
     if st.session_state.token is None:
         st.info(ui_text(language, "login_prompt"))
-        customer_id = st.text_input(ui_text(language, "customer_id_label"))
-        if st.button(ui_text(language, "login_button")) and customer_id:
-            try:
-                st.session_state.token = authenticate(api_base_url, customer_id)
-            except urllib.error.HTTPError:
-                st.error(ui_text(language, "login_failed"))
-            except urllib.error.URLError:
-                st.error(ui_text(language, "server_unreachable"))
+        # An `st.form` submits the id + button atomically on the FIRST click, fixing the
+        # stale-`st.button` bug (see `login_submission`). Storing the token is not enough: it does
+        # not restart `main()`, so a successful submit must `st.rerun()` to repaint the chat view
+        # on the same first click, while an error stays on the login screen.
+        with st.form("login"):
+            customer_id = st.text_input(ui_text(language, "customer_id_label"))
+            submitted = st.form_submit_button(ui_text(language, "login_button"))
+        if login_submission(submitted, customer_id):
+            with st.spinner(ui_text(language, "thinking")):
+                try:
+                    st.session_state.token = authenticate(api_base_url, customer_id)
+                except urllib.error.HTTPError:
+                    st.error(ui_text(language, "login_failed"))
+                except urllib.error.URLError:
+                    st.error(ui_text(language, "server_unreachable"))
+            if login_succeeded(st.session_state.token):
+                st.rerun()
         return
 
     for turn in st.session_state.history:

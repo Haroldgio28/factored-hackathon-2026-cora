@@ -38,6 +38,52 @@ def test_missing_translation_fails() -> None:
         app.ui_text("pt", "a_key_that_does_not_exist")
 
 
+def test_customer_app_exposes_login_submission() -> None:
+    import ui.customer_app as app
+
+    assert hasattr(app, "login_submission")
+
+
+def test_login_submission_true_only_when_submitted_and_id_present() -> None:
+    import ui.customer_app as app
+
+    # One click = one auth attempt: the predicate is True only when the form was submitted AND a
+    # non-blank id was typed. This is the regression guard for the double-click login bug.
+    assert app.login_submission(True, "CLI-1") is True
+    assert app.login_submission(False, "CLI-1") is False
+    assert app.login_submission(True, "   ") is False
+    assert app.login_submission(True, "") is False
+
+
+def test_customer_app_exposes_login_succeeded() -> None:
+    import ui.customer_app as app
+
+    assert hasattr(app, "login_succeeded")
+
+
+def test_login_succeeded_only_with_a_token() -> None:
+    import ui.customer_app as app
+
+    # Regression guard for the first-click defect: a successful auth yields a token, which must
+    # drive an immediate repaint of the chat view (st.rerun). The error paths leave the token None
+    # and must stay on the login screen.
+    assert app.login_succeeded("tok-123") is True
+    assert app.login_succeeded(None) is False
+    assert app.login_succeeded("") is False
+
+
+def test_main_reruns_after_successful_first_click_login() -> None:
+    import inspect
+
+    import ui.customer_app as app
+
+    # The success path must call st.rerun() so one click transitions to the authenticated UI
+    # instead of leaving the login screen rendered until another interaction.
+    body = inspect.getsource(app.main)
+    assert "if login_succeeded(st.session_state.token):" in body
+    assert "st.rerun()" in body
+
+
 def test_parse_chat_response_extracts_text_and_trace_id() -> None:
     import ui.customer_app as app
 
