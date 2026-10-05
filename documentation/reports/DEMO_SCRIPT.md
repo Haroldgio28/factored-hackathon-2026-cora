@@ -22,11 +22,14 @@ each variant. Both languages are shown for every path.
   view is [`../../ui/agent_console.py`](../../ui/agent_console.py).
 - **The LLM proposes, deterministic code decides.** The policy decision and its POL rule id
   ([`../../src/cora/policy/rules.yaml`](../../src/cora/policy/rules.yaml)) are shown on screen next
-  to the grounding result and the per-turn `trace_id`
-  ([`../../src/cora/obs/tracing.py`](../../src/cora/obs/tracing.py)).
+  to the per-turn `trace_id` ([`../../src/cora/obs/tracing.py`](../../src/cora/obs/tracing.py)) and
+  the same-turn tool `Result`(s) every shown figure is read from.
 - **What to point at (every turn):** the `trace_id`, the policy decision + POL rule id, and the
-  grounding result (facts matched against the same turn's tool `Result`). For actions, also the
-  masked product number and the read-back verification.
+  tool `Result`(s) this turn's figures came from. **Factual answers** (balance, FX, product list)
+  are rendered **template-only** straight from those same-turn `Result`s — grounded by
+  construction, with no LLM rewriting a value — so there is no separate polish/grounding-checker
+  step on those turns; the grounding checker applies only where LLM polish is attempted. For
+  actions, also point at the masked product number and the read-back verification.
 
 ---
 
@@ -36,9 +39,10 @@ each variant. Both languages are shown for every path.
 holds (POL-090). `_build_policy_input` in
 [`../../src/cora/agent/graph.py`](../../src/cora/agent/graph.py) sets `resource_owned=True` either
 when the turn resolves to a **specific** owned product (via `get_balance`) **or**, for a
-non-referenced read, at the customer level: **I6** answers when `list_products` returns ≥1 owned
-product, and a bare **I1** "¿cuál es mi saldo?" answers when the customer owns exactly **one**
-product (its balance is read and shown), otherwise it clarifies (several products) — see
+non-referenced read, at the customer level: **I6** answers on **any** authorized `list_products`
+result — including an **empty** one (a grounded "you have no products"), since an empty owned list
+is not an ownership failure — and a bare **I1** "¿cuál es mi saldo?" answers when the customer owns
+exactly **one** product (its balance is read and shown), otherwise it clarifies (several products) — see
 [`LIMITATIONS.md`](LIMITATIONS.md) §5 (resolved). The
 demo still uses an **explicit product reference** (a card ending in known digits) so the answered
 figure is tied to one named card and the grounding is easy to point at on screen.
@@ -50,8 +54,10 @@ figure is tied to one named card and the grounding is easy to point at on screen
 - **Expected reply (grounded `ANSWER`, figures from the balance tool `Result`):**
   - es: `Tu saldo es 1.250,75 COP y tu saldo disponible es 1.100,00 COP.`
   - pt: `Seu saldo é 1.250,75 COP e seu saldo disponível é 1.100,00 COP.`
-- **Point at:** the balance tool `source_refs` (table `products`), the grounding result (every
-  figure in the reply matched the tool `Result` for this turn), POL-090, and the `trace_id`.
+- **Point at:** the balance tool `source_refs` (table `products`), POL-090, the `trace_id`, and
+  that the reply is rendered **template-only** from the same-turn balance `Result` — the figures
+  are the tool's values verbatim, grounded by construction (no LLM rewrites a factual answer, so
+  there is no polish/grounding-checker step to show for this turn).
 
 ---
 
@@ -111,8 +117,9 @@ honestly rather than guessing a rate (REQ-28).
   surfaces the fail-closed tool-unavailable copy (no figure) rather than a guessed rate — a good
   secondary beat if the demo data has no fresh rate for the pair.
 - **Point at:** POL-090 on the trace span, the FX tool `source_refs` (table
-  `daily_exchange_rates`), the grounding result (the shown figure matched the tool `Result`), and
-  the `trace_id`.
+  `daily_exchange_rates`), the `trace_id`, and that the converted figure is rendered
+  **template-only** from the FX `Result` (the tool's values verbatim, grounded by construction — no
+  LLM polish or grounding-checker step runs on a factual answer).
 
 ---
 

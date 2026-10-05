@@ -110,9 +110,15 @@ read-ownership/FX fix.
     rate fails closed to the honest tool-unavailable path. When no rate exists for the requested
     date and the **latest prior** rate (within 7 days) is used, the answer **states it** to the
     customer in es/pt (REQ-28), driven by the tool's `used_prior_rate` flag.
-  - **Answer rendering + grounding:** the `{facts}` string is assembled deterministically from the
-    OK `Result`s and rendered through the template-first, LLM-polish, **grounding-gated**,
-    language-guarded generator — so every figure shown comes from a tool value this turn (REQ-08).
+  - **Answer rendering (deterministic, same-turn results):** the `{facts}` string is assembled
+    **deterministically** from the OK `Result`s gathered this turn and a factual answer is rendered
+    **template-only** (`polish=False`): the ANSWER template is those grounded facts verbatim, so no
+    LLM rewrites a displayed value and every figure comes from a tool result in the same turn
+    (REQ-08). This is the stronger control: the grounding checker validates only numbers, dates and
+    statuses, so an LLM rephrase could keep every number while swapping a currency code (USD→COP) —
+    skipping polish removes that attack surface entirely. The checker still runs on the paths that
+    DO attempt LLM polish (non-factual outcomes); it is simply not needed for a template-only
+    factual answer, which is grounded by construction.
   Ownership is **not** weakened: a FORBIDDEN/NOT_FOUND product read still denies, and a tool outage
   fails closed to `TOOL_UNAVAILABLE` via `_safe_read`, never a false "not owned".
 - **Eval alignment.** `src/cora/eval/builder._expected_outcome` was updated to derive the reference
