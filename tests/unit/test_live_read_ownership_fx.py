@@ -443,6 +443,54 @@ def test_non_referenced_i2_i4_abstain_not_product_list(
     assert result.node == "Abstain"
 
 
+# -- referenced I2-I4 have no renderer either: they must NOT return a balance answer ---
+
+
+@pytest.mark.parametrize("intent", [Intent.I2, Intent.I3, Intent.I4])
+def test_referenced_i2_i4_abstain_not_balance_answer(
+    monkeypatch: pytest.MonkeyPatch, source: LocalSource, intent: Intent
+) -> None:
+    clock = _Clock(_NOW)
+    session = _issue_session(clock, _OWNER)
+    orch = _orchestrator(source, clock)
+    _patch_intent(monkeypatch, intent)
+    # The turn references the owner's REAL product. I2/I3 (transactions) and I4 (card status)
+    # have no renderer wired, so even a referenced, owned one must NOT be answered with the
+    # (unrelated) balance figure - it stays not-owned and fails closed to abstain.
+    ref = Reference(kind=ReferenceKind.PRODUCT, product_id=_OWNED_CARD)
+    monkeypatch.setattr(Orchestrator, "_resolve_reference", lambda self, state, masked: (ref, None))
+
+    result = orch.step(session, "y sobre esa tarjeta")
+    assert result.decision is Decision.ABSTAIN
+    assert result.node == "Abstain"
+    # The owned card's balance must never surface for a transaction/card-status request.
+    if result.response is not None:
+        assert "952.03" not in result.response.text
+
+
+def test_referenced_i6_answers_product_list_not_balance(
+    monkeypatch: pytest.MonkeyPatch, source: LocalSource
+) -> None:
+    clock = _Clock(_NOW)
+    session = _issue_session(clock, _OWNER)
+    orch = _orchestrator(source, clock)
+    _patch_intent(monkeypatch, Intent.I6)
+    # Even with a resolved product reference in state, I6 ("list my products") is a customer-level
+    # question and must be served by list_products, never redirected to that product's balance.
+    ref = Reference(kind=ReferenceKind.PRODUCT, product_id=_OWNED_CARD)
+    monkeypatch.setattr(Orchestrator, "_resolve_reference", lambda self, state, masked: (ref, None))
+
+    result = orch.step(session, "¿qué productos tengo con esa tarjeta?")
+    assert result.decision is Decision.ANSWER
+    assert result.rule_id == "POL-090"
+    assert result.node == "Answer"
+    assert result.response is not None
+    text = result.response.text
+    # The grounded product list (masked card tail) is shown, not the balance figure.
+    assert "3827" in text
+    assert "952.03" not in text
+
+
 # -- tool outage fails closed to tool-unavailable, not a false deny --------------------
 
 

@@ -89,10 +89,9 @@ logger = logging.getLogger("cora.agent.graph")
 
 __all__ = ["Node", "Orchestrator", "TraceSpan", "TurnResult", "TurnSignals"]
 
-# Intent groups the orchestrator uses to decide which ownership flag the policy needs. Mirrors
-# the policy engine's own groupings (kept here so the orchestrator asks the ToolLayer only the
-# question the decision needs - no speculative lookups).
-_READ_INTENTS = frozenset({Intent.I1, Intent.I2, Intent.I3, Intent.I4, Intent.I5, Intent.I6})
+# The card-action intents (A1/A2) the orchestrator resolves card ownership/state for. The read
+# intents are handled individually in `_build_policy_input` (each routes to the one tool whose
+# facts the Answer renderer can ground on), so no read-intent group is needed here.
 _ACTION_INTENTS = frozenset({Intent.A1, Intent.A2})
 
 # Card statuses an action may be applied to (design POL-080 "state allows"). A freeze/unfreeze is
@@ -538,67 +537,83 @@ class Orchestrator:
         referenced_txn: ReferencedTransaction | None = None
         tool_results: list[Result] = []
 
+        # Ownership is resolved PER READ INTENT, routing each to the tool whose facts the Answer
+        # renderer can actually ground on - never a blanket balance read for every I1-I6. The
+        # renderer (`_facts_from_results`) can render a balance (I1), a product list (I6) and an FX
+        # conversion (I5); it has NO account-level rendering for transactions (I2/I3) or card
+        # status (I4), so those read intents are left not-owned here and fail closed to abstain
+        # (POL-999) rather than being answered with the wrong fact. This also keeps a referenced
+        # FOREIGN product under I2-I4 a correct deny (nothing is disclosed). The `customer_id` is
+        # always the verified session's; neither user nor model text widens access.
         if intent is Intent.I5:
             # FX conversion (I5, REQ-28/ADR-016): ownership here is "the customer may use the
             # FX capability", established by a successful rate read for the proposed amount +
             # currencies. The entities are DATA (LLM-proposed); the tool validates currencies,
-            # amount and rate freshness. Incomplete/ambiguous entities carry no amount+currencies,
-            # so there is nothing to convert: mark `ambiguous_entity` so POL-070 CLARIFIES (ask
-            # one focused question) rather than guessing a rate. A >7-day-stale rate comes back
-            # UNAVAILABLE and surfaces the honest fail-closed copy, never a guessed figure.
-            conversion = self._convert_fx(tools, entities)
-            if conversion is None:
+            # amount and rate freshness. Incomplete entities carry no amount+currencies, so there
+            # is nothing to convert: mark `ambiguous_entity` so POL-070 CLARIFIES (ask one focused
+            # question) rather than guessing a rate. The request date is the turn clock, so the
+            # tool uses the exact-date rate or the latest prior within 7 days; a >7-day-stale rate
+            # comes back UNAVAILABLE and surfaces the honest fail-closed copy, never a guessed one.
+            if (
+                entities is None
+                or entities.amount is None
+                or entities.currency is None
+                or entities.to_currency is None
+            ):
                 ambiguous_entity = True
             else:
+                fx_input = ConvertCurrencyInput(
+                    amount=float(entities.amount),
+                    from_currency=entities.currency,
+                    to_currency=entities.to_currency,
+                    on_date=self._clock().date(),
+                )
+                conversion = _safe_read(lambda: tools.convert_currency(fx_input))
                 resource_owned = conversion.status is Status.OK
                 tool_failed = tool_failed or conversion.status is Status.UNAVAILABLE
                 if resource_owned:
                     tool_results.append(conversion)
-        elif intent in _READ_INTENTS and product_id is not None:
-            balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
-            resource_owned = balance.status is Status.OK
-            tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
-            if resource_owned:
-                tool_results.append(balance)
-        elif intent in (Intent.I1, Intent.I6):
-            # A non-referenced read we can actually render at the account/customer level: I6
-            # ("list my products") and a bare I1 ("mi saldo"). The other read intents (I2-I4) have
-            # NO account-level tool/renderer wired, so a non-referenced I2-I4 stays not-owned and
-            # fails closed to abstain rather than being answered with an unrelated product list.
-            # Ownership is resolved at the CUSTOMER level via `list_products`, which the
-            # session-bound tool layer scopes to the verified `customer_id` (never user/model
-            # text). A tool outage stays UNAVAILABLE (fail closed), never a false "not owned".
+        elif intent is Intent.I6:
+            # I6 ("list my products") is ALWAYS served by `list_products`, referenced or not: it
+            # is a customer-level question, not a per-product read, so a resolved product reference
+            # never redirects it to a balance. The session-bound tool layer scopes the list to the
+            # verified `customer_id`. An OK list is a grounded answer even when EMPTY ("you have no
+            # products") - an empty owned collection is not an ownership failure. A tool outage
+            # stays UNAVAILABLE (fail closed), never a false "not owned".
             products = _safe_read(lambda: tools.list_products(ListProductsInput()))
             tool_failed = tool_failed or products.status is Status.UNAVAILABLE
             if products.status is Status.OK and products.data is not None:
-                owned_products = products.data.products
-                if intent is Intent.I6:
-                    # I6 is answered by the product list itself: an OK, session-scoped list is a
-                    # grounded answer even when EMPTY ("you have no products"), per the tool
-                    # contract and the I6 answer path - an empty owned collection is not an
-                    # ownership failure, so POL-090 answers from that Result either way.
-                    resource_owned = True
-                    tool_results.append(products)
-                elif len(owned_products) == 1:
-                    # A bare BALANCE read (I1) needs the actual balance figure, not just proof the
-                    # customer owns a product: `list_products` carries no balance. Ownership for
-                    # I1 is therefore gated on the BALANCE read succeeding, not on `list_products`
-                    # alone - otherwise a balance read that comes back UNAVAILABLE would still
-                    # answer the (unrelated) product list instead of failing closed. The id comes
-                    # from the session-scoped tool result, never user/model text.
-                    only_id = owned_products[0].product_id
-                    balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=only_id)))
-                    tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
-                    if balance.status is Status.OK:
-                        resource_owned = True
-                        tool_results.append(balance)
-                elif owned_products:
-                    # Several products: the bare balance request does not name which one, so the
-                    # product reference is ambiguous. Clarify (POL-070) rather than guess an
-                    # account or dump a product list for a balance question. An EMPTY list for a
-                    # bare I1 has no balance to resolve, so it stays not-owned and fails closed to
-                    # abstain (unchanged) - only I6 answers an empty list.
-                    ambiguous_entity = True
+                resource_owned = True
+                tool_results.append(products)
+        elif intent is Intent.I1:
+            # Balance read (I1). A referenced product reads that product's balance directly
+            # (a foreign/unknown product fails closed via FORBIDDEN/NOT_FOUND -> not owned). A bare
+            # "mi saldo" with no reference is resolved at the customer level: list the owned
+            # products (session-scoped), and when exactly ONE exists read its balance - ownership
+            # is gated on that balance read, not on `list_products` alone, so a balance outage
+            # fails closed instead of answering an unrelated list. Several products make the bare
+            # request ambiguous (POL-070 clarifies); an empty list has no balance and stays
+            # not-owned (abstain). The id always comes from a session-scoped tool result.
+            if product_id is not None:
+                balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
+                resource_owned = balance.status is Status.OK
+                tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
+                if resource_owned:
+                    tool_results.append(balance)
+            else:
+                products = _safe_read(lambda: tools.list_products(ListProductsInput()))
+                tool_failed = tool_failed or products.status is Status.UNAVAILABLE
+                if products.status is Status.OK and products.data is not None:
+                    owned_products = products.data.products
+                    if len(owned_products) == 1:
+                        only_id = owned_products[0].product_id
+                        balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=only_id)))
+                        tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
+                        if balance.status is Status.OK:
+                            resource_owned = True
+                            tool_results.append(balance)
+                    elif owned_products:
+                        ambiguous_entity = True
         if intent in _ACTION_INTENTS and product_id is not None:
             details = _safe_read(lambda: tools.get_card_details(GetCardDetailsInput(product_id=product_id)))
             tool_failed = tool_failed or details.status is Status.UNAVAILABLE
@@ -620,28 +635,6 @@ class Orchestrator:
             proposed_action=proposed_action,
         )
         return policy_input, tool_results, tool_failed
-
-    def _convert_fx(self, tools: ToolLayer, entities: nlu_entities.ExtractedEntities | None) -> Result | None:
-        """Call `convert_currency` from the proposed FX entities, or None if they are incomplete.
-
-        An FX turn needs an amount, a source currency and a target currency; the request date
-        defaults to today (the turn clock), so the tool uses the exact-date rate or the latest
-        prior within 7 days (REQ-28). The entities are untrusted DATA: a missing field returns
-        None so the turn falls through to clarify (POL-070), and the tool itself validates the
-        currencies/amount - this never invents a rate. Routed through `_safe_read` so a transport
-        outage fails closed to UNAVAILABLE, not an exception out of the turn.
-        """
-        if entities is None or entities.amount is None:
-            return None
-        if entities.currency is None or entities.to_currency is None:
-            return None
-        tool_input = ConvertCurrencyInput(
-            amount=float(entities.amount),
-            from_currency=entities.currency,
-            to_currency=entities.to_currency,
-            on_date=self._clock().date(),
-        )
-        return _safe_read(lambda: tools.convert_currency(tool_input))
 
     # -- nodes (design section 4). Each records a trace span. ---------------------------
     #
