@@ -64,8 +64,8 @@ ngrok version
 
 ```powershell
 # Option A - clone (public demo state is on main / the demo branch)
-git clone https://github.com/Haroldgio28/CORA.git
-cd CORA
+git clone https://github.com/Haroldgio28/factored-hackathon-2026-cora.git
+cd factored-hackathon-2026-cora
 
 # Option B - copy the whole folder from the corporate PC on a USB drive,
 # then DELETE the local-only caches so there are no conflicts:
