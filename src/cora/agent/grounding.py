@@ -12,7 +12,9 @@ What counts as a figure (the only things an LLM could fabricate that mislead a c
 - amounts / limits / rates: any number token (handles es/pt `1.234,56` and en `1,234.56`),
 - percentages: a number followed by `%`,
 - dates: ISO `YYYY-MM-DD` and localized `DD/MM/YYYY` / `DD-MM-YYYY`,
-- statuses: the enumerated product/transaction/card status words from the dataset.
+- statuses: the enumerated product/transaction/card status words from the dataset,
+- currency codes: the enumerated ISO codes (USD/MXN/COP/ARS) a balance or FX answer renders - a
+  polish that keeps the number but swaps `USD` for `COP` would otherwise pass the number check.
 
 Every candidate must appear in the flattened set of values taken from this turn's `Result`
 objects (`data`, `source_refs`, `as_of`). Numbers are compared NUMERICALLY after normalising the
@@ -29,6 +31,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from cora.tools.base import Result
+from cora.tools.models import is_known_currency
 
 __all__ = ["GroundingResult", "check_grounding"]
 
@@ -167,16 +170,18 @@ def _parse_dates(text: str) -> list[date]:
     return found
 
 
-def _allowed_values(tool_results: list[Result]) -> tuple[set[float], set[date], set[str]]:
-    """Flatten this turn's tool results into the sets of grounded numbers, dates and statuses.
+def _allowed_values(tool_results: list[Result]) -> tuple[set[float], set[date], set[str], set[str]]:
+    """Flatten this turn's tool results into the grounded numbers, dates, statuses and currencies.
 
     Walks each `Result`'s `data` (a Pydantic model) plus its `source_refs` and `as_of`. A float/int
     becomes an allowed number; a `date`/`datetime` an allowed date; a string recognised as a status
-    word an allowed status CONCEPT. This is the whitelist every text figure must match against.
+    word an allowed status CONCEPT, and a string recognised as a known ISO currency code an allowed
+    currency (upper-cased). This is the whitelist every text figure must match against.
     """
     numbers: set[float] = set()
     dates: set[date] = set()
     statuses: set[str] = set()
+    currencies: set[str] = set()
 
     def walk(value: object) -> None:
         if isinstance(value, bool):
@@ -193,6 +198,8 @@ def _allowed_values(tool_results: list[Result]) -> tuple[set[float], set[date], 
             concept = _status_concept(value)
             if concept is not None:
                 statuses.add(concept)
+            if is_known_currency(value.strip().upper()):
+                currencies.add(value.strip().upper())
             for num in _NUMBER_RE.findall(value):
                 parsed = _normalise_number(num)
                 if parsed is not None:
@@ -213,7 +220,7 @@ def _allowed_values(tool_results: list[Result]) -> tuple[set[float], set[date], 
         if result.as_of is not None:
             dates.add(result.as_of.date())
 
-    return numbers, dates, statuses
+    return numbers, dates, statuses, currencies
 
 
 def check_grounding(text: str, tool_results: list[Result]) -> GroundingResult:
@@ -226,7 +233,7 @@ def check_grounding(text: str, tool_results: list[Result]) -> GroundingResult:
     in `offending`. The generator discards the LLM text and falls back to the grounded template on
     a non-ok verdict - the deterministic code, not the model, makes the block decision.
     """
-    allowed_numbers, allowed_dates, allowed_statuses = _allowed_values(tool_results)
+    allowed_numbers, allowed_dates, allowed_statuses, allowed_currencies = _allowed_values(tool_results)
     offending: list[str] = []
 
     # Dates first, so a `2026-06-15` is consumed as a date and its digit runs are not re-checked
@@ -245,6 +252,14 @@ def check_grounding(text: str, tool_results: list[Result]) -> GroundingResult:
         concept = _status_concept(word)
         if concept is not None and concept not in allowed_statuses:
             offending.append(word)
+
+    # Currency codes: a known ISO code (USD/MXN/COP/ARS) in the text must be one the tools returned
+    # this turn. A balance/FX answer renders the amount WITH its currency, so a polish that keeps
+    # the number but swaps the code (USD -> COP) is a same-turn grounding violation and is blocked.
+    # Matched as whole upper-case tokens so a 3-letter run inside a word is not mistaken for a code.
+    for token in re.findall(r"\b[A-Z]{3}\b", text):
+        if is_known_currency(token) and token not in allowed_currencies:
+            offending.append(token)
 
     # Numbers: every number token not inside a matched date span must be a grounded value.
     for match in _NUMBER_RE.finditer(text):
@@ -285,6 +300,11 @@ if __name__ == "__main__":  # self-check: adversarial figure blocked, grounded f
     assert not check_grounding("Vence el 2030-01-01.", [grounded]).ok
     # Adversarial: an invented status word is blocked.
     assert not check_grounding("Tu tarjeta esta bloqueada.", [grounded]).ok
+    # Adversarial: the number is kept but the currency code is swapped (USD -> COP) -> blocked.
+    swapped = check_grounding("Tu saldo es 1234.56 COP.", [grounded])
+    assert not swapped.ok and "COP" in swapped.offending
+    # Grounded: the correct currency code passes.
+    assert check_grounding("Tu saldo es 1234.56 USD.", [grounded]).ok
     # Fail closed: a figure with no tool results is blocked.
     assert not check_grounding("El total es 500.", []).ok
     print("grounding self-check OK")

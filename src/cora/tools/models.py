@@ -157,6 +157,10 @@ class HandoffReason(StrEnum):
     COMPLAINT = "E2"
     FRAUD = "E3"
     HUMAN_REQUEST = "E4"
+    # A verified identity that is not a current customer of the bank: a welcome + human handoff
+    # (E5 is outside the E1-E4 intent map; it is set deterministically by the non-customer branch,
+    # never by an intent classifier). Priority is `normal`.
+    NON_CUSTOMER = "E5"
 
 
 class CreateHandoffInput(_Input):

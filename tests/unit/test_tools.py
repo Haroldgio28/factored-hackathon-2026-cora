@@ -133,6 +133,17 @@ def _build_landing(root: Path) -> None:
     )
     _write(root / "products.parquet", products)
 
+    # customers: both OWNER and OTHER are current customers (have a record). The tool layer gates
+    # every account read/action on this table (an id absent from `customers` owns no resources,
+    # REQ-12 fail-closed), so a landing that exercises reads must register the ids it reads for.
+    customers = pd.DataFrame(
+        [
+            {"customer_id": OWNER, "full_name": "Owner One"},
+            {"customer_id": OTHER, "full_name": "Other Two"},
+        ]
+    )
+    _write(root / "customers.parquet", customers)
+
     # transactions (Hive-partitioned facts; year/month/day come from the path).
     tx_cols = [
         "transaction_id",
@@ -619,3 +630,228 @@ def test_create_handoff_not_found_on_unknown_transaction(source: LocalSource) ->
     assert result.status is Status.NOT_FOUND
     assert not store.cases  # a non-existent transaction is not a foreign-access attempt
     assert not layer.access_log.attempts
+
+
+def test_create_handoff_rejects_orchestrator_only_e5_reason(source: LocalSource) -> None:
+    # Review finding 2: E5 (NON_CUSTOMER) is orchestrator-only (set deterministically by the
+    # non-customer branch after the existence check). The public tool must reject it fail-closed
+    # so the model/user cannot assert the same identity-derived reason, and persist NOTHING.
+    store = InMemoryHandoffStore()
+    layer = ToolLayer(_session(OWNER), source, handoff_store=store)
+    result = layer.create_handoff(
+        CreateHandoffInput(reason=HandoffReason.NON_CUSTOMER, summary="should never persist")
+    )
+    assert result.status is Status.INVALID
+    assert result.data is None
+    assert not store.cases  # nothing written
+
+
+# -- security: an id absent from `customers` owns NO resources (review finding 1) ------
+#
+# Even if the local/AWS data is inconsistent and an ORPHAN product/transaction row carries an id
+# that has no `customers` record, that verified non-customer must NOT be able to read or act on
+# it. Referential integrity is evidence, not an authorization boundary: every account read/action
+# gates on the deterministic `customers`-record lookup, NOT on a matching resource row.
+
+_ORPHAN_CUSTOMER = "CLI-ORPHAN000001"  # NO `customers` row, but owns orphan account rows below
+_ORPHAN_CARD = "PRD-ORPHANCARD1"
+_ORPHAN_TX = "TRX-ORPHAN0001"
+
+
+def _build_orphan_landing(root: Path) -> None:
+    # A registered customer (has a `customers` row AND an owned product) plus an ORPHAN id that
+    # has account rows but NO `customers` row. The orphan rows must stay inaccessible.
+    customers = pd.DataFrame([{"customer_id": OWNER, "full_name": "Owner One"}])
+    products = pd.DataFrame(
+        [
+            {
+                "product_id": OWNER_CARD,
+                "customer_id": OWNER,
+                "product_type": "Tarjeta Crédito",
+                "product_number": "4717188030863827",
+                "currency": "USD",
+                "current_balance": "952.03",
+                "credit_limit": "40451.75",
+                "days_past_due": "0.0",
+                "expiration_date": "2027-09-12",
+                "product_status": "Active",
+                "last_updated": "2026-06-15 10:00:00",
+            },
+            {
+                "product_id": _ORPHAN_CARD,
+                "customer_id": _ORPHAN_CUSTOMER,
+                "product_type": "Tarjeta Crédito",
+                "product_number": "4000111122223333",
+                "currency": "USD",
+                "current_balance": "7777.77",
+                "credit_limit": "10000.0",
+                "days_past_due": "0.0",
+                "expiration_date": "2028-01-01",
+                "product_status": "Active",
+                "last_updated": "2026-06-15 10:00:00",
+            },
+        ]
+    )
+    transactions = pd.DataFrame(
+        [
+            {
+                "transaction_id": _ORPHAN_TX,
+                "transaction_date": "2026-06-08 21:31:05",
+                "process_date": "2026-06-08",
+                "product_id": _ORPHAN_CARD,
+                "customer_id": _ORPHAN_CUSTOMER,
+                "amount": "267.32",
+                "currency": "USD",
+                "transaction_type": "Purchase",
+                "transaction_status": "Approved",
+                "merchant_name": "Tienda General",
+                "transaction_category": "Food",
+            }
+        ]
+    )
+    _write(root / "customers.parquet", customers)
+    _write(root / "products.parquet", products)
+    tx_part = root / "transactions" / "year=2026" / "month=06" / "day=08"
+    _write(tx_part / "transactions_20260608.parquet", transactions)
+
+
+@pytest.fixture(scope="module")
+def _orphan_landing(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = tmp_path_factory.mktemp("orphan_landing")
+    _build_orphan_landing(root)
+    return root
+
+
+@pytest.fixture
+def _orphan_source(_orphan_landing: Path) -> LocalSource:
+    return LocalSource(root=_orphan_landing)
+
+
+def test_orphan_customer_list_products_returns_empty(_orphan_source: LocalSource) -> None:
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source)
+    result = layer.list_products(ListProductsInput())
+    assert result.status is Status.OK
+    assert result.data is not None
+    assert result.data.products == []  # the orphan product is never listed
+
+
+def test_orphan_customer_get_balance_denied(_orphan_source: LocalSource) -> None:
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source)
+    result = layer.get_balance(GetBalanceInput(product_id=_ORPHAN_CARD))
+    assert result.status is Status.NOT_FOUND
+    assert result.data is None  # no balance figure leaks for an unregistered id
+
+
+def test_orphan_customer_get_card_details_denied(_orphan_source: LocalSource) -> None:
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source)
+    result = layer.get_card_details(GetCardDetailsInput(product_id=_ORPHAN_CARD))
+    assert result.status is Status.NOT_FOUND
+    assert result.data is None
+
+
+def test_orphan_customer_search_transactions_returns_empty(_orphan_source: LocalSource) -> None:
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source)
+    result = layer.search_transactions(SearchTransactionsInput())
+    assert result.status is Status.OK
+    assert result.data is not None
+    assert result.data.transactions == []  # the orphan transaction is never returned
+
+
+def test_orphan_customer_freeze_card_denied(_orphan_source: LocalSource) -> None:
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source)
+    result = layer.freeze_card(CardFreezeInput(product_id=_ORPHAN_CARD, confirmation_id="CONF-1"))
+    # The ownership gate denies before any confirmation/overlay write is considered.
+    assert result.status is Status.NOT_FOUND
+    assert result.data is None
+
+
+def test_orphan_customer_create_handoff_cannot_reference_orphan_resources(
+    _orphan_source: LocalSource,
+) -> None:
+    store = InMemoryHandoffStore()
+    layer = ToolLayer(_session(_ORPHAN_CUSTOMER), _orphan_source, handoff_store=store)
+    by_product = layer.create_handoff(
+        CreateHandoffInput(reason=HandoffReason.DISPUTE, summary="x", product_id=_ORPHAN_CARD)
+    )
+    by_tx = layer.create_handoff(
+        CreateHandoffInput(reason=HandoffReason.FRAUD, summary="x", transaction_id=_ORPHAN_TX)
+    )
+    assert by_product.status is Status.NOT_FOUND
+    assert by_tx.status is Status.NOT_FOUND
+    assert not store.cases  # neither orphan resource reaches the agent console
+
+
+def test_registered_customer_unaffected_by_orphan_gate(_orphan_source: LocalSource) -> None:
+    # Known-customer behavior is unchanged: the registered OWNER still reads its own product.
+    layer = ToolLayer(_session(OWNER), _orphan_source)
+    products = layer.list_products(ListProductsInput())
+    balance = layer.get_balance(GetBalanceInput(product_id=OWNER_CARD))
+    assert products.status is Status.OK
+    assert products.data is not None
+    assert [p.product_id for p in products.data.products] == [OWNER_CARD]
+    assert balance.status is Status.OK
+    assert balance.data is not None
+    assert balance.data.current_balance == pytest.approx(952.03)
+
+
+# -- fail closed on a `customers` lookup OUTAGE (review finding 1) ----------------------
+#
+# The customer-record gate has THREE states and must not collapse an UNAVAILABLE existence
+# lookup into a definitive absence. A REGISTERED customer whose `customers` lookup RAISES must
+# receive UNAVAILABLE on every path (collections AND point/action reads) - never a successful
+# empty collection or a false NOT_FOUND, which would silently disclose "no data" after a backend
+# failure. The ordinary resource reads must be reachable (so the failure is attributable to the
+# existence gate alone), so only the `customers` count is forced to raise.
+
+
+class _CustomersCountFails:
+    """Delegating `DataSource` whose only failure is the `customers` existence count.
+
+    Every other read passes straight through to the real `LocalSource`, so a healthy registered
+    customer would otherwise read normally; forcing just the `customers` count to raise isolates
+    the existence-gate outage (review finding 1).
+    """
+
+    def __init__(self, inner: LocalSource) -> None:
+        self._inner = inner
+
+    def count(self, table: str, *, where: str | None = None) -> int:
+        if table == "customers":
+            raise RuntimeError("simulated customers lookup outage")
+        return self._inner.count(table, where=where)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._inner, name)
+
+
+def test_registered_customer_list_products_unavailable_on_customers_outage(source: LocalSource) -> None:
+    layer = ToolLayer(_session(OWNER), _CustomersCountFails(source))  # type: ignore[arg-type]
+    result = layer.list_products(ListProductsInput())
+    # Not a successful empty list: the existence lookup was in doubt, so fail closed.
+    assert result.status is Status.UNAVAILABLE
+    assert result.data is None
+
+
+def test_registered_customer_search_transactions_unavailable_on_customers_outage(
+    source: LocalSource,
+) -> None:
+    layer = ToolLayer(_session(OWNER), _CustomersCountFails(source))  # type: ignore[arg-type]
+    result = layer.search_transactions(SearchTransactionsInput())
+    assert result.status is Status.UNAVAILABLE
+    assert result.data is None
+
+
+def test_registered_customer_get_balance_unavailable_on_customers_outage(source: LocalSource) -> None:
+    layer = ToolLayer(_session(OWNER), _CustomersCountFails(source))  # type: ignore[arg-type]
+    result = layer.get_balance(GetBalanceInput(product_id=OWNER_CARD))
+    # Point read: UNAVAILABLE, not a false NOT_FOUND, so no "product not found" is implied.
+    assert result.status is Status.UNAVAILABLE
+    assert result.data is None
+
+
+def test_registered_customer_freeze_card_unavailable_on_customers_outage(source: LocalSource) -> None:
+    layer = ToolLayer(_session(OWNER), _CustomersCountFails(source))  # type: ignore[arg-type]
+    result = layer.freeze_card(CardFreezeInput(product_id=OWNER_CARD, confirmation_id="CONF-1"))
+    # Action path: the existence gate fails closed before any confirmation/overlay write.
+    assert result.status is Status.UNAVAILABLE
+    assert result.data is None

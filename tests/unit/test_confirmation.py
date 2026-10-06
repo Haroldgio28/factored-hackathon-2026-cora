@@ -63,6 +63,9 @@ class _Clock:
 
 
 def _build_landing(root: Path) -> None:
+    # A `customers` row so the deliverable-2 existence check returns OK and this real customer
+    # takes the ordinary confirm/execute path (without it the lookup is UNAVAILABLE -> fail closed).
+    customers = pd.DataFrame([{"customer_id": _CUSTOMER, "full_name": "Owner One"}])
     products = pd.DataFrame(
         [
             {
@@ -81,6 +84,7 @@ def _build_landing(root: Path) -> None:
         ]
     )
     root.mkdir(parents=True, exist_ok=True)
+    customers.astype("string").to_parquet(root / "customers.parquet", index=False)
     products.astype("string").to_parquet(root / "products.parquet", index=False)
 
 

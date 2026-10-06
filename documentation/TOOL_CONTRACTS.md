@@ -195,6 +195,13 @@ Shared behaviours:
 ### `create_handoff` — E1-E4
 - **Input:** `CreateHandoffInput{reason: E1|E2|E3|E4, summary, product_id?, transaction_id?}`.
 - **Output:** `HandoffData{case_id, reason}`.
+- **Reason set:** the `HandoffReason` enum carries **E1-E4** (dispute/complaint/fraud/human
+  request) as the intent-mapped reasons this tool accepts, plus **E5 `NON_CUSTOMER`** — a
+  deterministic, orchestrator-only reason set by the non-customer branch when the verified
+  `customer_id` has no row in the bank's `customers` records (deliverable 2). E5 is **never a
+  valid `create_handoff` input**: a non-customer handoff is persisted by the orchestrator's shared
+  `_persist_handoff` path (`build_package`+store) with reason E5 and `normal` priority, carrying
+  empty verified facts (no account data). The model/user can never request an E5 handoff.
 - **Behaviour:** the handoff package is built with the `customer_id` **injected from the
   session** (never from input). Any referenced resource is authorized before it is persisted:
   if `product_id` is given it must be owned, and if `transaction_id` is given it must be owned

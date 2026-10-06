@@ -33,14 +33,14 @@ import subprocess
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from cora.agent.graph import Orchestrator, TurnResult
 from cora.agent.state import SessionStore
 from cora.eval.baselines import B1NaiveLLM
 from cora.eval.faults import FaultInjectingToolLayer
-from cora.eval.scenarios import Scenario
+from cora.eval.scenarios import EVAL_NOW, Scenario
 from cora.identity import MockIdentityService, Session
 from cora.policy import PolicyEngine
 from cora.tools import ToolLayer
@@ -161,6 +161,12 @@ def _run_cora(
     issue_at = now
     turn_clock_time = now + _SESSION_TTL + timedelta(minutes=1) if expired else now
 
+    # A tool_failure case is made CONCRETE: force every read to fail (rate=1.0) so the turn
+    # deterministically takes its fail-closed TOOL_UNAVAILABLE path - the suite builder derives
+    # the same not-owned reference from an always-UNAVAILABLE read, so expected and produced agree
+    # instead of relying on the generic probabilistic fault_rate (which may or may not fire).
+    effective_rate = 1.0 if scenario.force_tool_fault else fault_rate
+
     clock_box = {"t": issue_at}
     clock = lambda: clock_box["t"]  # noqa: E731 - a one-line injectable clock seam
     service = MockIdentityService(signing_key=_HARNESS_SIGNING_KEY, session_ttl=_SESSION_TTL, clock=clock)
@@ -168,14 +174,24 @@ def _run_cora(
     clock_box["t"] = turn_clock_time  # advance AFTER issuing so an expired case is past expiry
 
     def factory(sess: Session) -> FaultInjectingToolLayer:
-        return FaultInjectingToolLayer(ToolLayer(sess, source), rate=fault_rate, rng=rng)
+        return FaultInjectingToolLayer(ToolLayer(sess, source), rate=effective_rate, rng=rng)
 
+    store = SessionStore(clock=clock)
     orchestrator = Orchestrator(
         policy=policy,
-        store=SessionStore(clock=clock),
+        store=store,
         tool_layer_factory=factory,
         clock=clock,
     )
+    if scenario.referenced_product_id and not expired:
+        # An unauthorized-access case references a product owned by ANOTHER customer. Seeding it
+        # as the last-referenced product makes the turn attempt a REAL foreign read via the
+        # orchestrator's existing deterministic resolution (`reference.product_id or
+        # state.referenced_product_id`), so the ownership check fails closed on FORBIDDEN/NOT_FOUND
+        # - the concrete unauthorized access the reference outcome is derived from (never a
+        # label-forced abstain). `customer_id` is still bound only from the verified session; only
+        # the referenced product id is seeded, and never on an expired case (state is discarded).
+        store.require(session).referenced_product_id = scenario.referenced_product_id
     return lambda: orchestrator.step(session, scenario.utterance, language=scenario.language)
 
 
@@ -222,7 +238,10 @@ def run_suite(
     fallback (which would silently contaminate the real numbers). ponytail: one stdlib sleep, not a
     rate-limiter class.
     """
-    base_now = now or datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    # The suite builder derives its date-sensitive FX reference at EVAL_NOW, so the runner must
+    # execute every turn at the SAME clock or expected and produced FX rates would describe
+    # different rows (REQ-28/44). A caller may still override `now` for a targeted experiment.
+    base_now = now or EVAL_NOW
     records: list[RunRecord] = []
     version_dict = asdict(versions)
     # Build the policy engine once (its `from_yaml()` is uncached) so no CORA cell pays the YAML
@@ -284,15 +303,27 @@ def _run_b1(
     B1's read tool layer is wrapped in the SAME seeded `FaultInjectingToolLayer` as CORA's, so both
     configs face identical injected failures (REQ-41 identical-conditions comparison): a naive agent
     answering confidently off a failed read is exactly the danger the eval surfaces.
+
+    The adversarial conditions are presented to B1 exactly as to CORA (REQ-41 same conditions): a
+    `tool_failure` case forces every read to fail (rate=1.0), and an `unauthorized_access` case
+    makes B1 attempt the SAME foreign product read. The session boundary is NOT weakened - B1's
+    tool layer is still bound to the scenario's own verified session, so the foreign read fails
+    closed with FORBIDDEN/NOT_FOUND; the eval then surfaces whether the naive agent leaks it.
     """
     clock = lambda: now  # noqa: E731 - fixed harness clock
+    effective_rate = 1.0 if scenario.force_tool_fault else fault_rate
     service = MockIdentityService(signing_key=_HARNESS_SIGNING_KEY, session_ttl=_SESSION_TTL, clock=clock)
     session = _mint_session(service, scenario.customer_id)
-    tools = FaultInjectingToolLayer(ToolLayer(session, source, clock=clock), rate=fault_rate, rng=rng)
+    tools = FaultInjectingToolLayer(ToolLayer(session, source, clock=clock), rate=effective_rate, rng=rng)
     baseline = B1NaiveLLM()
 
     def run() -> dict[str, object]:
-        result = baseline.answer(scenario.utterance, scenario.language, tools=tools)
+        result = baseline.answer(
+            scenario.utterance,
+            scenario.language,
+            tools=tools,
+            referenced_product_id=scenario.referenced_product_id,
+        )
         return {
             "produced_decision": None,  # B1 has no policy decision by design
             "produced_text": result.text,

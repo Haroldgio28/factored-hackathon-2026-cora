@@ -33,7 +33,7 @@ from cora.handoff.escalation import (
 )
 from cora.identity import MockIdentityService, Session
 from cora.policy import Decision, Intent, PolicyEngine, Thresholds
-from cora.tools import InMemoryHandoffStore, Result, Status
+from cora.tools import InMemoryHandoffStore, Result, Status, ToolLayer
 from cora.tools.models import BalanceData, CardDetailsData, HandoffReason
 
 _KEY = "test-signing-key-not-a-real-secret"
@@ -133,12 +133,31 @@ def test_dispute_intake_never_promises_outcome() -> None:
 # -- end-to-end: handoff package built + persisted through the graph -------------------
 
 
+class _ExistingCustomerSource:
+    """A `DataSource` stand-in whose `customers` count is 1 (the double is a registered customer).
+
+    The deliverable-2 non-customer branch calls `source.count("customers", where=...)` every turn;
+    returning 1 keeps these graph doubles on the ordinary (real-customer) path.
+    """
+
+    def count(self, table, *, where=None, **_kwargs):  # noqa: ANN001, ANN003 - test double
+        assert table == "customers"
+        return 1
+
+
 class _FakeToolLayer:
     """Duck-typed `ToolLayer` for the graph: ownership answers + an in-memory handoff store."""
 
     def __init__(self, owned: set[str], store: InMemoryHandoffStore) -> None:
         self._owned = owned
         self.handoff_store = store
+        # The non-customer branch (deliverable 2) reads `customer_id` + `source.count("customers")`
+        # every turn; this double is always a real, registered customer.
+        self.customer_id = _CUSTOMER
+        self.source = _ExistingCustomerSource()
+
+    # Reuse the REAL existence contract (needs only `customer_id` + `source.count`).
+    customer_record_exists = ToolLayer.customer_record_exists
 
     def get_balance(self, tool_input):  # noqa: ANN001 - duck-typed test double
         if tool_input.product_id in self._owned:

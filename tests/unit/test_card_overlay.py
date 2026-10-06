@@ -84,6 +84,15 @@ def _build_landing(root: Path) -> None:
         ]
     )
     _write(root / "products.parquet", products)
+    # The tool layer gates every account read/action on a `customers` record (an id absent from
+    # `customers` owns no resources, REQ-12 fail-closed), so register the ids this landing reads.
+    customers = pd.DataFrame(
+        [
+            {"customer_id": OWNER, "full_name": "Owner One"},
+            {"customer_id": OTHER, "full_name": "Other Two"},
+        ]
+    )
+    _write(root / "customers.parquet", customers)
 
 
 @pytest.fixture(scope="module")

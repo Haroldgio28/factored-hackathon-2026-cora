@@ -61,6 +61,11 @@ class Outcome(StrEnum):
     # not give an explicit affirmative (REQ-14). Both are grounded, figure-free copy.
     ACTION_DONE = "action_done"
     ACTION_CANCELLED = "action_cancelled"
+    # A greeting for an identity that is NOT a current customer of the bank: welcome them and tell
+    # them they will be routed to a human agent (deterministic non-customer branch in graph.py).
+    # It is NOT a policy `Decision`, so `from_decision` leaves it untouched; it is rendered
+    # directly by the orchestrator's non-customer handoff path. The copy discloses no account data.
+    NONCUSTOMER_HANDOFF = "noncustomer_handoff"
 
     @classmethod
     def from_decision(cls, decision: Decision) -> Outcome:
@@ -153,6 +158,19 @@ _TEMPLATES: dict[tuple[Outcome, str], str] = {
     ),
     (Outcome.ACTION_CANCELLED, "pt"): (
         "Certo, não fiz nenhuma alteração no seu cartão. Posso ajudar com mais alguma coisa?"
+    ),
+    # NONCUSTOMER_HANDOFF — the verified identity has NO row in the bank's `customers` records, so
+    # it is not a current customer (a deterministic customer-record check over the verified
+    # customer_id, never a model decision; distinct from a real customer who owns zero products).
+    # Greet, then route to a human; disclose no account data. No placeholders, so it renders with
+    # no fields.
+    (Outcome.NONCUSTOMER_HANDOFF, "es"): (
+        "Hola, soy CORA. Como aún no figuras como cliente del banco, "
+        "voy a transferirte con una persona del equipo para ayudarte con tus consultas."
+    ),
+    (Outcome.NONCUSTOMER_HANDOFF, "pt"): (
+        "Olá, sou a CORA. Como você ainda não consta como cliente do banco, "
+        "vou encaminhar você a uma pessoa da equipe para ajudar com suas dúvidas."
     ),
     # TOOL_UNAVAILABLE — a tool did not answer; be honest, never guess a value (REQ-40).
     (Outcome.TOOL_UNAVAILABLE, "es"): (

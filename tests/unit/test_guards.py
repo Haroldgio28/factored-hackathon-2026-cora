@@ -30,7 +30,7 @@ from cora.agent.graph import Orchestrator
 from cora.agent.state import SessionStore
 from cora.identity import MockIdentityService, Session
 from cora.policy import Decision, Intent, PolicyEngine, Thresholds
-from cora.tools import TOOL_NAMES, InMemoryHandoffStore
+from cora.tools import TOOL_NAMES, InMemoryHandoffStore, ToolLayer
 
 _KEY = "test-signing-key-not-a-real-secret"
 _CUSTOMER = "CUST-000123"
@@ -50,6 +50,18 @@ class _Clock:
         return self.now
 
 
+class _ExistingCustomerSource:
+    """A `DataSource` stand-in whose `customers` count is 1 (so the double is a real customer).
+
+    The deliverable-2 non-customer branch calls `source.count("customers", where=...)` every turn;
+    returning 1 keeps the guard turns on the ordinary (real-customer) policy path.
+    """
+
+    def count(self, table, *, where=None, **_kwargs):  # noqa: ANN001, ANN003 - test double
+        assert table == "customers"
+        return 1
+
+
 class _FakeToolLayer:
     """A tool layer that answers no read (nothing to ground) and persists handoffs in memory.
 
@@ -60,6 +72,12 @@ class _FakeToolLayer:
 
     def __init__(self) -> None:
         self.handoff_store = InMemoryHandoffStore()
+        # The non-customer branch reads `customer_id` + `source.count("customers")` every turn.
+        self.customer_id = _CUSTOMER
+        self.source = _ExistingCustomerSource()
+
+    # Reuse the REAL existence contract (needs only `customer_id` + `source.count`).
+    customer_record_exists = ToolLayer.customer_record_exists
 
 
 def _issue_session(clock: _Clock, ttl_minutes: int = 15) -> tuple[MockIdentityService, Session, str]:

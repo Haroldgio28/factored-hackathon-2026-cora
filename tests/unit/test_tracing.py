@@ -39,7 +39,7 @@ from cora.identity import MockIdentityService
 from cora.obs import export_turn
 from cora.obs.tracing import TRACE_FILENAME, build_record
 from cora.policy import Decision, Intent, PolicyEngine, Thresholds
-from cora.tools import InMemoryHandoffStore, Result, Status
+from cora.tools import InMemoryHandoffStore, Result, Status, ToolLayer
 from cora.tools.models import BalanceData, CardDetailsData
 
 # PII probes that must NEVER appear raw in a trace record. All five categories the security
@@ -176,10 +176,28 @@ class _Clock:
         return self.now
 
 
+class _ExistingCustomerSource:
+    """A `DataSource` stand-in whose `customers` count is 1 (so the double is a real customer).
+
+    The deliverable-2 non-customer branch calls `source.count("customers", where=...)` every turn;
+    returning 1 keeps the tracing turns on the ordinary (real-customer) path.
+    """
+
+    def count(self, table, *, where=None, **_kwargs):  # noqa: ANN001, ANN003 - test double
+        assert table == "customers"
+        return 1
+
+
 class _FakeToolLayer:
     def __init__(self, owned: set[str]) -> None:
         self._owned = owned
         self.handoff_store = InMemoryHandoffStore()
+        # The non-customer branch reads `customer_id` + `source.count("customers")` every turn.
+        self.customer_id = _CUSTOMER
+        self.source = _ExistingCustomerSource()
+
+    # Reuse the REAL existence contract (needs only `customer_id` + `source.count`).
+    customer_record_exists = ToolLayer.customer_record_exists
 
     def get_balance(self, tool_input):  # noqa: ANN001 - duck-typed test double
         if tool_input.product_id in self._owned:
@@ -363,6 +381,9 @@ _ACTION_CARD = "PRD-ACTIONCARD1"
 def _action_landing(root: Path) -> None:
     import pandas as pd
 
+    # A `customers` row so the deliverable-2 existence check returns OK and this real customer
+    # takes the ordinary action path (without it the lookup is UNAVAILABLE -> fail closed).
+    customers = pd.DataFrame([{"customer_id": _ACTION_CUSTOMER, "full_name": "Action One"}])
     products = pd.DataFrame(
         [
             {
@@ -381,6 +402,7 @@ def _action_landing(root: Path) -> None:
         ]
     )
     root.mkdir(parents=True, exist_ok=True)
+    customers.astype("string").to_parquet(root / "customers.parquet", index=False)
     products.astype("string").to_parquet(root / "products.parquet", index=False)
 
 

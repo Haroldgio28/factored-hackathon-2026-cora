@@ -24,6 +24,7 @@ import pytest
 
 from cora.agent.graph import _READ_MAX_ATTEMPTS, Orchestrator
 from cora.agent.llm import LLMUnavailable, StubLLMClient
+from cora.agent.references import Reference, ReferenceKind
 from cora.agent.state import SessionStore
 from cora.agent.templates import Outcome, render_template
 from cora.identity import MockIdentityService, Session
@@ -31,7 +32,7 @@ from cora.nlu.fallback import MATCH_CONFIDENCE, keyword_fallback_intent
 from cora.nlu.labels import Intent
 from cora.obs.resilience import BreakerState, CircuitBreaker
 from cora.policy import Decision, PolicyEngine, Thresholds
-from cora.tools import InMemoryHandoffStore, Result, Status
+from cora.tools import InMemoryHandoffStore, Result, Status, ToolLayer
 from cora.tools.models import BalanceData, CardDetailsData
 
 _KEY = "test-signing-key-not-a-real-secret"
@@ -50,12 +51,32 @@ class _Clock:
         return self.now
 
 
+class _ExistingCustomerSource:
+    """A `DataSource` stand-in whose `customers` count is 1 (so the double is a real customer).
+
+    The deliverable-2 non-customer branch calls `source.count("customers", where=...)` every turn;
+    returning 1 keeps the resilience turns on the ordinary path, so the read-timeout / breaker /
+    retry behaviour under test is what actually drives the turn (never a false non-customer greet).
+    """
+
+    def count(self, table, *, where=None, **_kwargs):  # noqa: ANN001, ANN003 - test double
+        assert table == "customers"
+        return 1
+
+
 class _FakeToolLayer:
     """In-memory tool layer: owns `PRD-1`, answers the two ownership reads 4.1/5.2 need."""
 
     def __init__(self, owned: set[str]) -> None:
         self._owned = owned
         self.handoff_store = InMemoryHandoffStore()
+        # The non-customer branch reads `customer_id` + `source.count("customers")` every turn.
+        self.customer_id = _CUSTOMER
+        self.source = _ExistingCustomerSource()
+
+    # Reuse the REAL existence contract (needs only `customer_id` + `source.count`), so this double
+    # exercises `ToolLayer.customer_record_exists` instead of a divergent reimplementation.
+    customer_record_exists = ToolLayer.customer_record_exists
 
     def get_balance(self, tool_input):  # noqa: ANN001 - duck-typed test double
         if tool_input.product_id in self._owned:
@@ -171,6 +192,33 @@ def test_breaker_opens_after_repeated_failures_and_forces_template_mode(
     assert down.calls - calls_before == 1, "breaker open: the LLM polish must NOT be attempted"
     assert result.response is not None and not result.response.polished
     assert result.response.text.strip(), "a real template response still comes back"
+
+
+def test_breaker_open_also_short_circuits_the_answer_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: a grounded ANSWER (read/FX) must honor the open breaker like every other
+    # outcome - render the template WITHOUT attempting the LLM polish, so a Bedrock outage never
+    # re-adds a polish call (and a long UI wait) on the newly-wired live read paths.
+    clock = _Clock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
+    _service, session = _issue_session(clock)
+    down = _AlwaysDownLLM()
+    breaker = CircuitBreaker(failure_threshold=1, cooldown=timedelta(seconds=30), clock=clock)
+    breaker.record_failure()  # force it open at t0
+    assert breaker.state is BreakerState.OPEN
+    orch = _orchestrator(clock, llm=down, breaker=breaker)
+    # A product-scoped I1 read of the owned product -> POL-090 answers through the grounded path.
+    _patch_intent(monkeypatch, Intent.I1, 0.99)
+    ref = Reference(kind=ReferenceKind.PRODUCT, product_id="PRD-1")
+    monkeypatch.setattr(Orchestrator, "_resolve_reference", lambda self, state, masked: (ref, None))
+
+    calls_before = down.calls
+    result = orch.step(session, "cuál es mi saldo")
+    assert result.decision is Decision.ANSWER
+    # `_resolve_reference` is patched out, so entity extraction never calls the LLM this turn; the
+    # ANSWER polish must NOT be attempted while the breaker is open either, so the delta is 0 - any
+    # LLM call here would be the forbidden polish on an open breaker.
+    assert down.calls - calls_before == 0, "breaker open: the ANSWER polish must NOT be attempted"
+    assert result.response is not None and not result.response.polished
+    assert "100" in result.response.text  # the grounded balance still comes back from the template
 
 
 # -- 2. breaker half-opens after cooldown and closes on success ------------------------

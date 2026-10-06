@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cora.policy import Decision, Intent
@@ -28,6 +29,7 @@ __all__ = [
     "ADVERSARIAL_KINDS",
     "CATEGORIES",
     "COUNTRIES",
+    "EVAL_NOW",
     "LANGUAGES",
     "Scenario",
     "ScenarioError",
@@ -35,6 +37,16 @@ __all__ = [
     "load_scenarios",
     "write_scenarios",
 ]
+
+# The single evaluation clock shared by the suite builder and the runner. The builder derives its
+# date-sensitive reference facts (the I5 FX rate) for THIS date, and the runner executes every
+# turn at THIS `now`, so expected and produced outcomes describe the SAME rate row (REQ-28/44).
+# Picked to sit a few days after the latest curated `daily_exchange_rates` date (the real snapshot
+# ends 2026-06-17; see analysis/EDA_FINDINGS.md), so the FX path resolves a latest-prior rate
+# within 7 days (REQ-28) deterministically on both the real snapshot and the test fixture - never a
+# wall-clock "today" that would drift stale. Change this only together with the data snapshot the
+# suite is built on.
+EVAL_NOW: datetime = datetime(2026, 6, 20, 12, 0, tzinfo=UTC)
 
 # The two conversation languages (language steering); ES variants are tagged by `country`.
 LANGUAGES: tuple[str, ...] = ("es", "pt")
@@ -100,6 +112,15 @@ class Scenario:
     adversarial_kind: str | None = None
     provenance: str = _PROVENANCE_ES
     simulated: bool = False
+    # Adversarial setup the runner must honour so the EXECUTED turn matches the reference outcome
+    # (otherwise a fail-closed family would run a legitimate own-account turn and corrupt the
+    # authorization metrics). `referenced_product_id` is a product the session customer does NOT
+    # own (the unauthorized_access family): the runner seeds it as the turn's referenced product so
+    # the real ToolLayer read returns FORBIDDEN/NOT_FOUND -> not owned. `force_tool_fault` makes the
+    # runner's fault layer deterministically fail this case's reads with UNAVAILABLE (the
+    # tool_failure family), rather than relying on the probabilistic fault_rate.
+    referenced_product_id: str | None = None
+    force_tool_fault: bool = False
 
     def __post_init__(self) -> None:
         if self.category not in CATEGORIES:

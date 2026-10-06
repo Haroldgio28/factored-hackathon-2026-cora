@@ -74,16 +74,24 @@ from cora.policy import (
 from cora.tools import Result, Status, ToolLayer
 from cora.tools.base import mask_pii
 from cora.tools.confirmations import CardAction
-from cora.tools.models import GetBalanceInput, GetCardDetailsInput, HandoffReason
+from cora.tools.models import (
+    BalanceData,
+    ConversionData,
+    ConvertCurrencyInput,
+    GetBalanceInput,
+    GetCardDetailsInput,
+    HandoffReason,
+    ListProductsInput,
+    ProductsData,
+)
 
 logger = logging.getLogger("cora.agent.graph")
 
 __all__ = ["Node", "Orchestrator", "TraceSpan", "TurnResult", "TurnSignals"]
 
-# Intent groups the orchestrator uses to decide which ownership flag the policy needs. Mirrors
-# the policy engine's own groupings (kept here so the orchestrator asks the ToolLayer only the
-# question the decision needs - no speculative lookups).
-_READ_INTENTS = frozenset({Intent.I1, Intent.I2, Intent.I3, Intent.I4, Intent.I5, Intent.I6})
+# The card-action intents (A1/A2) the orchestrator resolves card ownership/state for. The read
+# intents are handled individually in `_build_policy_input` (each routes to the one tool whose
+# facts the Answer renderer can ground on), so no read-intent group is needed here.
 _ACTION_INTENTS = frozenset({Intent.A1, Intent.A2})
 
 # Card statuses an action may be applied to (design POL-080 "state allows"). A freeze/unfreeze is
@@ -336,6 +344,37 @@ class Orchestrator:
             if not lang.low_confidence:
                 state.language = lang.lang
 
+        # 2b. Non-customer branch (deliverable 2, REQ-16): a verified identity whose `customer_id`
+        #     has NO row in the bank's `customers` records is not a current customer. Existence is
+        #     a DETERMINISTIC `ToolLayer.customer_record_exists()` check over the VERIFIED session's
+        #     `customer_id` (never a model decision, never user text), read through `_safe_read` so
+        #     it respects the uniform tool `Result` contract and bounded retries - distinct from
+        #     "owns zero products": a real registered customer with no products DOES have a
+        #     `customers` row (`Status.OK`) and takes the normal path (so I6 still answers the
+        #     grounded "no products" copy), while a wholly unknown id (`Status.NOT_FOUND`) is
+        #     greeted and routed to a human. Ownership is NOT weakened for real customers. On a
+        #     non-customer turn CORA greets, routes to a human and builds the handoff via the shared
+        #     persistence path - it reads/discloses NO account data. It runs AFTER the
+        #     open-confirmation branch (an in-flight confirmation still resolves first) and BEFORE
+        #     classification/policy.
+        #
+        #     FAIL CLOSED on doubt (security steering P1/P4): a lookup that is `UNAVAILABLE` (the
+        #     backend raised, or any status other than a definitive OK/NOT_FOUND) does NOT decide
+        #     the identity either way. The turn falls through to the normal path with
+        #     `existence_unavailable=True`, which seeds `tool_failed` so EVERY downstream read -
+        #     even one (e.g. I5 FX) that could succeed independently of the customer-record lookup -
+        #     fails closed to the honest tool-unavailable copy + escalation. Uncertainty therefore
+        #     can NEVER be read as "not a client" nor produce a factual answer.
+        tools = self._tool_layer_factory(session)
+        existence = _safe_read(tools.customer_record_exists)
+        if existence.status is Status.NOT_FOUND:
+            masked = mask_pii(utterance)
+            result = self._noncustomer_handoff(state, tools, masked, trace_id)
+            result.masked_input = masked
+            result.language = state.language
+            return self._finish(result, trace_id)
+        existence_unavailable = existence.status is not Status.OK
+
         # 3. Mask BEFORE anything else reads the utterance; screen the masked text for injection.
         masked = mask_pii(utterance)
         injection_hit = injection.screen(masked).injection_hit
@@ -346,11 +385,14 @@ class Orchestrator:
         #    shared across concurrent FastAPI requests, and a mutable per-turn field could let an
         #    overlapping es/pt turn classify with the wrong language and misroute policy (REQ-51).
         intent, confidence = self._classify(masked, state.language)
-        reference = self._resolve_reference(state, masked)
+        reference, entities = self._resolve_reference(state, masked)
 
         # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
         #    results are kept so an escalation can build the handoff package from the SAME facts.
-        tools = self._tool_layer_factory(session)
+        #    Reuse the session-bound `tools` already built for the step-2b existence check (one
+        #    `ToolLayer` per turn). `existence_unavailable` seeds `tool_failed` so a customer-record
+        #    lookup that was in DOUBT forces every downstream read to fail closed (no FX/other tool
+        #    can disclose a figure after identity uncertainty).
         policy_input, tool_results, tool_failed = self._build_policy_input(
             state=state,
             tools=tools,
@@ -358,7 +400,9 @@ class Orchestrator:
             confidence=confidence,
             injection_hit=injection_hit,
             reference=reference,
+            entities=entities,
             proposed_action=proposed_action,
+            existence_unavailable=existence_unavailable,
         )
 
         # 6. Decide + dispatch. The decision is the policy's, never the model's.
@@ -380,6 +424,14 @@ class Orchestrator:
             product_id = reference.product_id or state.referenced_product_id
             if product_id is not None:
                 self._open_confirmation(state, result, tools, intent, product_id)
+
+        # An ANSWER decision (POL-090) renders the grounded read result HERE, where this turn's
+        # OK `tool_results` are in scope. The facts string is assembled deterministically from
+        # those Result objects (never the model), then rendered through the template-first,
+        # LLM-polish, grounding-gated, language-guarded generator - so the customer sees a real,
+        # source-backed figure and the grounding gate runs against the SAME tool results (REQ-08).
+        if decision.decision is Decision.ANSWER:
+            result.response = self._render_answer(state, tool_results)
 
         # A tool read came back UNAVAILABLE (after `_safe_read`'s bounded retries): the tool
         # outcome is in DOUBT, so FAIL CLOSED (REQ-40, security steering P4). This is distinct from
@@ -468,11 +520,20 @@ class Orchestrator:
             logger.warning("intent classifier unavailable; using keyword fallback", exc_info=True)
             return keyword_fallback_intent(masked_utterance, language)
 
-    def _resolve_reference(self, state: SessionState, masked_utterance: str) -> Reference:
-        """Extract candidate entities (LLM proposes) then resolve the reference from state (code)."""
+    def _resolve_reference(
+        self, state: SessionState, masked_utterance: str
+    ) -> tuple[Reference, nlu_entities.ExtractedEntities | None]:
+        """Extract candidate entities (LLM proposes) then resolve the reference from state (code).
+
+        Returns the resolved cross-turn `Reference` AND the raw candidate entities, so the FX
+        path (I5) can read the proposed amount/currencies from the SAME extraction without a
+        second LLM call. The entities stay strictly data: the reference is still resolved from
+        session state, and the FX tool validates currencies/amount before anything is disclosed.
+        """
         extracted = nlu_entities.extract_entities(masked_utterance, client=self._llm)
-        product_ref = extracted.entities.product_ref if extracted.entities is not None else None
-        return resolve_reference(state, product_ref)
+        entities = extracted.entities
+        product_ref = entities.product_ref if entities is not None else None
+        return resolve_reference(state, product_ref), entities
 
     def _build_policy_input(
         self,
@@ -483,7 +544,9 @@ class Orchestrator:
         confidence: float,
         injection_hit: bool,
         reference: Reference,
+        entities: nlu_entities.ExtractedEntities | None = None,
         proposed_action: Decision | None,
+        existence_unavailable: bool = False,
     ) -> tuple[PolicyInput, list[Result], bool]:
         """Resolve every policy flag deterministically via the ToolLayer (never the model).
 
@@ -505,16 +568,91 @@ class Orchestrator:
         resource_owned = False
         product_owned = False
         state_allows = False
-        tool_failed = False
+        ambiguous_entity = reference.ambiguous
+        # Seed with the step-2b customer-record check: an UNAVAILABLE existence lookup is identity
+        # DOUBT, so the whole turn fails closed exactly like any other UNAVAILABLE read - no
+        # downstream tool (even one that could succeed on its own) may disclose a figure (P1/P4).
+        tool_failed = existence_unavailable
         referenced_txn: ReferencedTransaction | None = None
         tool_results: list[Result] = []
 
-        if intent in _READ_INTENTS and product_id is not None:
-            balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
-            resource_owned = balance.status is Status.OK
-            tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
-            if resource_owned:
-                tool_results.append(balance)
+        # Ownership is resolved PER READ INTENT, routing each to the tool whose facts the Answer
+        # renderer can actually ground on - never a blanket balance read for every I1-I6. The
+        # renderer (`_facts_from_results`) can render a balance (I1), a product list (I6) and an FX
+        # conversion (I5); it has NO account-level rendering for transactions (I2/I3) or card
+        # status (I4), so those read intents are left not-owned here and fail closed to abstain
+        # (POL-999) rather than being answered with the wrong fact. This also keeps a referenced
+        # FOREIGN product under I2-I4 a correct deny (nothing is disclosed). The `customer_id` is
+        # always the verified session's; neither user nor model text widens access.
+        if intent is Intent.I5:
+            # FX conversion (I5, REQ-28/ADR-016): ownership here is "the customer may use the
+            # FX capability", established by a successful rate read for the proposed amount +
+            # currencies. The entities are DATA (LLM-proposed); the tool validates currencies,
+            # amount and rate freshness. Incomplete entities carry no amount+currencies, so there
+            # is nothing to convert: mark `ambiguous_entity` so POL-070 CLARIFIES (ask one focused
+            # question) rather than guessing a rate. The request date is the turn clock, so the
+            # tool uses the exact-date rate or the latest prior within 7 days; a >7-day-stale rate
+            # comes back UNAVAILABLE and surfaces the honest fail-closed copy, never a guessed one.
+            if (
+                entities is None
+                or entities.amount is None
+                or entities.currency is None
+                or entities.to_currency is None
+            ):
+                ambiguous_entity = True
+            else:
+                fx_input = ConvertCurrencyInput(
+                    amount=float(entities.amount),
+                    from_currency=entities.currency,
+                    to_currency=entities.to_currency,
+                    on_date=self._clock().date(),
+                )
+                conversion = _safe_read(lambda: tools.convert_currency(fx_input))
+                resource_owned = conversion.status is Status.OK
+                tool_failed = tool_failed or conversion.status is Status.UNAVAILABLE
+                if resource_owned:
+                    tool_results.append(conversion)
+        elif intent is Intent.I6:
+            # I6 ("list my products") is ALWAYS served by `list_products`, referenced or not: it
+            # is a customer-level question, not a per-product read, so a resolved product reference
+            # never redirects it to a balance. The session-bound tool layer scopes the list to the
+            # verified `customer_id`. An OK list is a grounded answer even when EMPTY ("you have no
+            # products") - an empty owned collection is not an ownership failure. A tool outage
+            # stays UNAVAILABLE (fail closed), never a false "not owned".
+            products = _safe_read(lambda: tools.list_products(ListProductsInput()))
+            tool_failed = tool_failed or products.status is Status.UNAVAILABLE
+            if products.status is Status.OK and products.data is not None:
+                resource_owned = True
+                tool_results.append(products)
+        elif intent is Intent.I1:
+            # Balance read (I1). A referenced product reads that product's balance directly
+            # (a foreign/unknown product fails closed via FORBIDDEN/NOT_FOUND -> not owned). A bare
+            # "mi saldo" with no reference is resolved at the customer level: list the owned
+            # products (session-scoped), and when exactly ONE exists read its balance - ownership
+            # is gated on that balance read, not on `list_products` alone, so a balance outage
+            # fails closed instead of answering an unrelated list. Several products make the bare
+            # request ambiguous (POL-070 clarifies); an empty list has no balance and stays
+            # not-owned (abstain). The id always comes from a session-scoped tool result.
+            if product_id is not None:
+                balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=product_id)))
+                resource_owned = balance.status is Status.OK
+                tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
+                if resource_owned:
+                    tool_results.append(balance)
+            else:
+                products = _safe_read(lambda: tools.list_products(ListProductsInput()))
+                tool_failed = tool_failed or products.status is Status.UNAVAILABLE
+                if products.status is Status.OK and products.data is not None:
+                    owned_products = products.data.products
+                    if len(owned_products) == 1:
+                        only_id = owned_products[0].product_id
+                        balance = _safe_read(lambda: tools.get_balance(GetBalanceInput(product_id=only_id)))
+                        tool_failed = tool_failed or balance.status is Status.UNAVAILABLE
+                        if balance.status is Status.OK:
+                            resource_owned = True
+                            tool_results.append(balance)
+                    elif owned_products:
+                        ambiguous_entity = True
         if intent in _ACTION_INTENTS and product_id is not None:
             details = _safe_read(lambda: tools.get_card_details(GetCardDetailsInput(product_id=product_id)))
             tool_failed = tool_failed or details.status is Status.UNAVAILABLE
@@ -523,13 +661,25 @@ class Orchestrator:
                 state_allows = details.data.product_status in _ACTIONABLE_CARD_STATUSES
                 tool_results.append(details)
 
+        # Identity DOUBT dominates (security steering P1/P4): if the step-2b customer-record check
+        # was UNAVAILABLE we neither greeted-as-noncustomer nor confirmed a current customer, so
+        # the identity is unresolved. No downstream read may stand - even one (e.g. I5 FX) that
+        # succeeded on its own - so FORCE every ownership flag closed and drop any gathered facts.
+        # The policy then cannot ANSWER/CONFIRM; `tool_failed` renders the honest tool-unavailable
+        # copy and feeds the escalation streak. A real factual answer is impossible under doubt.
+        if existence_unavailable:
+            resource_owned = False
+            product_owned = False
+            state_allows = False
+            tool_results = []
+
         policy_input = PolicyInput(
             session_valid=state.authenticated,
             intent=intent,
             intent_confidence=confidence,
             injection_hit=injection_hit,
             referenced_txn=referenced_txn,
-            ambiguous_entity=reference.ambiguous,
+            ambiguous_entity=ambiguous_entity,
             product_owned=product_owned,
             state_allows=state_allows,
             resource_owned=resource_owned,
@@ -548,12 +698,27 @@ class Orchestrator:
         """`Expired -> Unauthenticated`: state already discarded; force re-auth, disclose nothing."""
         return _single("Unauthenticated", detail="session expired; state discarded, re-auth required")
 
-    def _render(self, state: SessionState, outcome: Outcome, **fields: str) -> GeneratedResponse:
+    def _render(
+        self,
+        state: SessionState,
+        outcome: Outcome,
+        *,
+        tool_results: list[Result] | None = None,
+        polish: bool = True,
+        **fields: str,
+    ) -> GeneratedResponse:
         """Render the customer-facing response for `outcome` in the session language (task 4.2).
 
         Deterministic template first, LLM polish via the orchestrator's client when configured;
         fails closed to the template on any LLM error (REQ-40). Figures come only from `fields`,
         which the node fills from tool facts - the model never originates a value.
+
+        `polish=False` forces the deterministic template verbatim (no LLM call). It is the
+        fail-closed choice for a FACTUAL answer: the grounding gate only validates numbers, dates
+        and statuses, so an LLM rephrase could preserve every figure while swapping a currency code
+        (USD->COP) or a product type - a fact not in the grounding whitelist. The ANSWER template is
+        already the grounded `{facts}` verbatim, so skipping polish loses only tone, never a value,
+        and "the LLM proposes, deterministic code decides" holds for every displayed fact.
 
         Task 5.2 adds the circuit breaker as a routing switch on top of this already-safe fallback:
         while the breaker is OPEN, polish is forced off and the LLM is NOT attempted (short-circuit
@@ -574,10 +739,41 @@ class Orchestrator:
             breaker_open = False
         if breaker_open:
             # Breaker open: skip the LLM entirely, render the grounded template (REQ-40).
-            return generate(outcome, state.language, fields=fields, polish=False, client=self._llm)
+            return generate(
+                outcome,
+                state.language,
+                fields=fields,
+                tool_results=tool_results,
+                polish=False,
+                client=self._llm,
+            )
         return generate(
-            outcome, state.language, fields=fields, client=_BreakerClient(self._llm, self._breaker)
+            outcome,
+            state.language,
+            fields=fields,
+            tool_results=tool_results,
+            polish=polish,
+            client=_BreakerClient(self._llm, self._breaker),
         )
+
+    def _render_answer(self, state: SessionState, tool_results: list[Result]) -> GeneratedResponse:
+        """Render a grounded ANSWER (POL-090) from this turn's OK tool results (task 4.2, REQ-08).
+
+        The `{facts}` text is assembled DETERMINISTICALLY from the `Result` objects by
+        `_facts_from_results` - every figure, currency code and product type it contains comes from
+        a tool value this turn. ANSWER is rendered TEMPLATE-ONLY (`polish=False`): the grounding
+        gate validates only numbers, dates and statuses, so an LLM rephrase could keep every figure
+        while swapping a currency (USD->COP) or a product type and still pass grounding. Those facts
+        are not in the grounding whitelist, so the fail-closed rule "every displayed fact comes from
+        a same-turn tool result" is only guaranteed when the model never rewrites the facts text.
+        The template IS the grounded facts verbatim, so skipping polish loses tone, never a value.
+        If no OK result was gathered (should not happen on a POL-090 turn, which requires
+        `resource_owned=True`), fail closed to the honest tool-unavailable copy.
+        """
+        facts = _facts_from_results(tool_results, state.language)
+        if not facts:
+            return self._render(state, Outcome.TOOL_UNAVAILABLE)
+        return self._render(state, Outcome.ANSWER, tool_results=tool_results, polish=False, facts=facts)
 
     def _node_reauth(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """POL-000: the session is not valid for this turn -> re-authenticate (fail closed)."""
@@ -589,10 +785,10 @@ class Orchestrator:
         return result
 
     def _node_answer(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
-        """`Decide -> Answer` (POL-090): render from tool facts (4.2). Returns to Authenticated.
+        """`Decide -> Answer` (POL-090): land the node; `step` renders from this turn's tool facts.
 
-        The grounded `facts` string is assembled from the read tool's `Result` by the read
-        subtask; until it is wired the node lands with no `response` (never a guessed answer).
+        The grounded `response` is filled by `_render_answer` back in `step`, where the OK
+        `tool_results` the policy decided on are in scope - the node itself never guesses a value.
         """
         return _from_decision("Answer", decision)
 
@@ -731,13 +927,46 @@ class Orchestrator:
         else:
             actions = []
 
+        self._persist_handoff(
+            state,
+            result,
+            tools,
+            reason,
+            priority=decision.priority,
+            tool_results=tool_results,
+            unresolved_questions=unresolved,
+            actions_taken=actions,
+        )
+
+    def _persist_handoff(
+        self,
+        state: SessionState,
+        result: TurnResult,
+        tools: ToolLayer,
+        reason: HandoffReason,
+        *,
+        priority: str,
+        tool_results: list[Result],
+        unresolved_questions: list[str],
+        actions_taken: list[str],
+    ) -> None:
+        """Build the REQ-16 package from verified facts, persist it and record the Handoff span.
+
+        The ONE place a handoff package is created and stored, shared by every escalation (policy
+        or streak) AND the non-customer branch, so trace linkage, case-id assignment and the final
+        Handoff span behave identically. The turn's `trace_id` MUST already be on `result` (set by
+        the caller before this runs) so it is threaded into the package as `trace_ref`; a human
+        agent can then pull the turn trace through the normal REQ-16 package contract. The package
+        is assembled from the SAME OK tool results the policy decided on - never the model - so for
+        a non-customer (empty `tool_results`) nothing can leak.
+        """
         package = build_package(
             state,
             tool_results,
             reason,
-            priority=decision.priority,
-            unresolved_questions=unresolved,
-            actions_taken=actions,
+            priority=priority,
+            unresolved_questions=unresolved_questions,
+            actions_taken=actions_taken,
             trace_ref=result.trace_id,
             now=self._clock(),
         )
@@ -745,6 +974,46 @@ class Orchestrator:
         result.handoff_package = package
         result.handoff_case_id = case_id
         result.spans.append(TraceSpan(node="Handoff", decision=reason.value, detail=case_id))
+
+    def _noncustomer_handoff(
+        self,
+        state: SessionState,
+        tools: ToolLayer,
+        masked: str,
+        trace_id: str,
+    ) -> TurnResult:
+        """Greet a non-customer, route to a human and build the handoff (deliverable 2, REQ-16).
+
+        Called from the deterministic non-customer branch in `_step_locked` when the verified
+        `customer_id` has NO row in the bank's `customers` records. It discloses NO account data:
+        the package is built with NO tool results (empty verified facts - the identity owns
+        nothing), so the no-leak invariant holds by construction. The customer-facing text is the
+        es/pt greeting that welcomes the person and tells them they will be routed to a human
+        (never a figure). The handoff reuses the SAME `_persist_handoff` path every escalation uses
+        (shared package build, trace linkage and store creation), with the dedicated `NON_CUSTOMER`
+        (E5) reason and `normal` priority, so the case reaches the agent console with a case id and
+        a `trace_ref`. The masked turn is recorded first so the package's verbatim request is this
+        turn's (masked) text, and the turn `trace_id` is set on the result BEFORE the package is
+        built so the persisted package carries the correct trace reference.
+        """
+        state.record_turn(masked, None, None)
+        result = TurnResult(
+            node="Handoff",
+            response=self._render(state, Outcome.NONCUSTOMER_HANDOFF),
+            message="noncustomer greeting + handoff",
+            trace_id=trace_id,
+        )
+        self._persist_handoff(
+            state,
+            result,
+            tools,
+            HandoffReason.NON_CUSTOMER,
+            priority="normal",
+            tool_results=[],
+            unresolved_questions=["non-customer: identity not found in bank records"],
+            actions_taken=[],
+        )
+        return result
 
     def _node_abstain(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide -> Abstain` (POL-010/030/999): disclose nothing / route out of scope (4.6).
@@ -873,6 +1142,85 @@ class _BreakerClient:
             update()
         except Exception:  # noqa: BLE001 - a best-effort breaker update must never fail a turn
             logger.warning("circuit-breaker state update failed; continuing", exc_info=True)
+
+
+# Localized labels for the grounded ANSWER facts (es/pt). Figures come ONLY from the tool
+# Result; these words carry no figure of their own, so they never affect grounding.
+_FACT_LABELS: dict[str, dict[str, str]] = {
+    "es": {
+        "products": "Tus productos:",
+        "no_products": "No tienes productos contratados.",
+        "balance": "Saldo",
+        "available": "disponible",
+        "converted": "equivale a",
+        "rate": "tasa",
+        "on": "al",
+        "prior_rate": "no había tasa para la fecha solicitada; se usó la tasa anterior más reciente",
+    },
+    "pt": {
+        "products": "Seus produtos:",
+        "no_products": "Você não tem produtos contratados.",
+        "balance": "Saldo",
+        "available": "disponível",
+        "converted": "equivale a",
+        "rate": "taxa",
+        "on": "em",
+        "prior_rate": "não havia taxa para a data solicitada; foi usada a taxa anterior mais recente",
+    },
+}
+
+
+def _num(value: float) -> str:
+    """Format a figure for the facts text (plain `1234.56`); grounding compares numerically."""
+    return f"{value:.2f}" if value != int(value) else str(int(value))
+
+
+def _facts_from_results(tool_results: list[Result], language: str) -> str:
+    """Assemble the grounded `{facts}` string for an ANSWER from this turn's OK tool results.
+
+    Every figure in the returned text (balance, available credit, converted amount, rate, dates,
+    masked number tails) is read straight from a `Result.data` field, so the grounding gate run
+    with the same `tool_results` passes it and blocks any figure the LLM polish might add (REQ-08).
+    The labels are es/pt and figure-free. Returns "" when there is nothing OK to render (the caller
+    fails closed to the tool-unavailable copy).
+    """
+    lab = _FACT_LABELS.get(language, _FACT_LABELS["es"])
+    lines: list[str] = []
+    for result in tool_results:
+        data = result.data
+        if isinstance(data, ProductsData):
+            if not data.products:
+                # An OK but EMPTY list is still a grounded I6 answer: state it explicitly rather
+                # than render a bare header. The copy carries no figure, so grounding is unaffected.
+                lines.append(lab["no_products"])
+                continue
+            items = [
+                f"- {p.product_type} {p.product_number_masked or ''} "
+                f"({p.currency}, {p.product_status})".strip()
+                for p in data.products
+            ]
+            lines.append(lab["products"] + "\n" + "\n".join(items))
+        elif isinstance(data, BalanceData):
+            if data.current_balance is None:
+                continue  # no figure to show; skip rather than render a blank balance
+            parts = [f"{lab['balance']}: {_num(data.current_balance)} {data.currency}"]
+            if data.available_credit is not None:
+                parts.append(f"{_num(data.available_credit)} {data.currency} {lab['available']}")
+            lines.append(", ".join(parts))
+        elif isinstance(data, ConversionData):
+            line = (
+                f"{_num(data.original_amount)} {data.from_currency} {lab['converted']} "
+                f"{_num(data.converted_amount)} {data.to_currency} "
+                f"({lab['rate']} {_num(data.rate)}, {lab['on']} {data.rate_date.isoformat()})"
+            )
+            # REQ-28/ADR-016: when no rate existed for the requested date and the latest prior
+            # rate was substituted, the caller MUST state it (TOOL_CONTRACTS). The flag is a tool
+            # fact (never model-originated); the figure-free wording below carries no new figure,
+            # so it does not affect grounding.
+            if data.used_prior_rate:
+                line += f" — {lab['prior_rate']}"
+            lines.append(line)
+    return "\n".join(lines)
 
 
 # -- module-level node helpers (keep the Orchestrator surface small) -----------------------
