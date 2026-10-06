@@ -2,6 +2,15 @@
 # it sets the brand palette so both UIs read as one institutional-banking product. Teal (#2E8C97)
 # and the single gold accent (#C8A24B) are applied via the scoped CSS block in the apps, since the
 # theme has no extra accent slots.
+
+# Server settings for serving the UI behind a public tunnel (ngrok/cloudflared) for demos.
+# CORS/XSRF protection are disabled because the browser origin is the tunnel host, not localhost;
+# with them on, Streamlit rejects the cross-origin requests and the app hangs on load. Safe here:
+# the only thing exposed is the thin UI client; identity, policy and masking all live behind the API.
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
 [theme]
 primaryColor = "#1C4E80"             # navy-700: links, active states, primary buttons
 backgroundColor = "#F6F8FA"          # bg-50: app background (never pure white)
