@@ -17,12 +17,20 @@ API running: `uv run uvicorn cora.api.app:create_app --factory`. The API base UR
 from __future__ import annotations
 
 import json
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
-from ui import branding
+# `streamlit run ui/customer_app.py` puts `ui/` on sys.path, not the repo root, so `import ui.*`
+# would fail at launch. Put the repo root (this file's parent's parent) first so the `ui` package
+# resolves the same way it does under pytest (conftest does the equivalent for the suite).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ui import branding  # noqa: E402  (import after the sys.path bootstrap above)
 
 # Customer-facing UI copy. BOTH languages must carry EVERY key; a missing translation fails the
 # test (mirrors how templates/agent_console enforce es+pt completeness). Spanish is a neutral LATAM

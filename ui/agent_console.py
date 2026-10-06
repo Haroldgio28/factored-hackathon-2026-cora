@@ -16,15 +16,24 @@ Run with: `uv run streamlit run ui/agent_console.py` (needs the `ui` dependency 
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
 
-from cora.handoff.store import (
+# `streamlit run ui/agent_console.py` puts `ui/` on sys.path, not the repo root, so `import ui.*`
+# would fail at launch. Put the repo root first so the `ui` package resolves the same way it does
+# under pytest (conftest does the equivalent for the suite).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from cora.handoff.store import (  # noqa: E402  (import after the sys.path bootstrap above)
     CASE_STATUSES,
     JsonHandoffStore,
     status_label,
     with_agent_workflow,
 )
-from ui.branding import brand_css, header_title, logo_path
+from ui.branding import brand_css, header_title, logo_path  # noqa: E402
 
 # Canonical status id -> the `.cora-status-*` CSS class the shared brand block colour-codes
 # (DESIGN_SYSTEM.md section 7). An unknown status falls back to the neutral "open" class.
