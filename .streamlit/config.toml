@@ -1,0 +1,10 @@
+# CORA Streamlit theme (DESIGN_SYSTEM.md section 9). This is configuration, not a dependency:
+# it sets the brand palette so both UIs read as one institutional-banking product. Teal (#2E8C97)
+# and the single gold accent (#C8A24B) are applied via the scoped CSS block in the apps, since the
+# theme has no extra accent slots.
+[theme]
+primaryColor = "#1C4E80"             # navy-700: links, active states, primary buttons
+backgroundColor = "#F6F8FA"          # bg-50: app background (never pure white)
+secondaryBackgroundColor = "#FFFFFF" # bg-0: cards, message area
+textColor = "#14202B"                # ink-900: primary text
+font = "sans serif"
