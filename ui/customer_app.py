@@ -22,6 +22,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from ui import branding
+
 # Customer-facing UI copy. BOTH languages must carry EVERY key; a missing translation fails the
 # test (mirrors how templates/agent_console enforce es+pt completeness). Spanish is a neutral LATAM
 # register; Portuguese is pt-BR.
@@ -58,9 +60,6 @@ UI_COPY: dict[str, dict[str, str]] = {
     },
 }
 
-# Language-neutral brand line shown in the header next to the logo (DESIGN_SYSTEM.md section 5).
-PRODUCT_NAME = "CORA - Customer-Oriented Resolution Agent"
-
 LANGUAGES: tuple[str, ...] = ("es", "pt")
 DEFAULT_LANGUAGE = "es"
 
@@ -87,21 +86,21 @@ def trace_label(trace_id: object) -> str:
 def logo_path() -> Path | None:
     """Return the committed brand logo path, or `None` when the asset is missing.
 
-    Pure so the logo-vs-text-fallback decision is testable without Streamlit. A missing file must
-    degrade to a styled text title (header_title) rather than crash the UI.
+    Thin delegate to the shared `ui.branding` helper so both surfaces resolve the SAME asset (the
+    plan's condition: once the shared module exists, both UIs use it). A missing file degrades to
+    a styled text title rather than crashing the UI.
     """
-    path = Path(__file__).parent / "assets" / "cora_logo.png"
-    return path if path.exists() else None
+    return branding.logo_path()
 
 
 def header_title(language: str) -> str:
     """Return the language-neutral brand name shown in the header (DESIGN_SYSTEM.md section 5).
 
-    Pure and language-neutral: the product name is the brand itself; the per-language tagline is
-    rendered separately from UI_COPY. The `language` arg keeps the signature uniform with the rest
-    of the copy helpers (and leaves room for a localized sub-line without touching callers).
+    Thin delegate to the shared `ui.branding.header_title`. The `language` arg keeps the signature
+    uniform with the rest of the copy helpers (and leaves room for a localized sub-line without
+    touching callers); the brand name itself is language-neutral.
     """
-    return PRODUCT_NAME
+    return branding.header_title()
 
 
 def case_badge(case_id: object) -> str:
@@ -116,35 +115,13 @@ def case_badge(case_id: object) -> str:
 
 
 def brand_css() -> str:
-    """Return one scoped `<style>` block applying the DESIGN_SYSTEM.md tokens (section 2/4/5).
+    """Return the shared scoped `<style>` block (DESIGN_SYSTEM.md tokens, section 2/4/5/7).
 
-    Pure string so it is testable (non-empty, carries the brand hex) without Streamlit, and
-    reuse-the-platform: no CSS framework, no JS, no web font. Styles the header, the mono trace/
-    case chips (gold accent used once, on the case chip), and clear bot-vs-customer chat bubbles.
+    Thin delegate to `ui.branding.brand_css` so the customer chat and the agent console share ONE
+    palette/style source and can never drift. The block carries the chat-bubble, chip and card
+    styling both surfaces rely on.
     """
-    return """
-<style>
-  :root {
-    --navy-900:#0E2A47; --navy-700:#1C4E80; --teal-500:#2E8C97; --teal-100:#DCEDEF;
-    --gold-500:#C8A24B; --ink-900:#14202B; --ink-500:#5B6B78; --line-200:#E3E8EC;
-    --bg-50:#F6F8FA; --bg-0:#FFFFFF;
-  }
-  .cora-header { display:flex; flex-direction:column; gap:4px; padding-bottom:8px;
-    border-bottom:1px solid var(--line-200); margin-bottom:12px; }
-  .cora-product { color:var(--navy-900); font-size:20px; font-weight:600; line-height:1.25; }
-  .cora-tagline { color:var(--ink-500); font-size:13px; }
-  .cora-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-  .cora-chip { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px;
-    letter-spacing:.02em; color:var(--ink-500); background:var(--bg-0);
-    border:1px solid var(--line-200); border-radius:6px; padding:2px 8px; }
-  .cora-chip-case { color:var(--navy-900); border-color:var(--gold-500); }
-  /* Clear bot-vs-customer separation: teal-tinted bot bubbles, hairline-bordered user bubbles. */
-  .stChatMessage[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-    background:var(--teal-100); border-radius:10px; }
-  .stChatMessage[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-    background:var(--bg-0); border:1px solid var(--line-200); border-radius:10px; }
-</style>
-"""
+    return branding.brand_css()
 
 
 def login_submission(submitted: bool, customer_id: str) -> bool:
