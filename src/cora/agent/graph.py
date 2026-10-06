@@ -344,6 +344,37 @@ class Orchestrator:
             if not lang.low_confidence:
                 state.language = lang.lang
 
+        # 2b. Non-customer branch (deliverable 2, REQ-16): a verified identity whose `customer_id`
+        #     has NO row in the bank's `customers` records is not a current customer. Existence is
+        #     a DETERMINISTIC `ToolLayer.customer_record_exists()` check over the VERIFIED session's
+        #     `customer_id` (never a model decision, never user text), read through `_safe_read` so
+        #     it respects the uniform tool `Result` contract and bounded retries - distinct from
+        #     "owns zero products": a real registered customer with no products DOES have a
+        #     `customers` row (`Status.OK`) and takes the normal path (so I6 still answers the
+        #     grounded "no products" copy), while a wholly unknown id (`Status.NOT_FOUND`) is
+        #     greeted and routed to a human. Ownership is NOT weakened for real customers. On a
+        #     non-customer turn CORA greets, routes to a human and builds the handoff via the shared
+        #     persistence path - it reads/discloses NO account data. It runs AFTER the
+        #     open-confirmation branch (an in-flight confirmation still resolves first) and BEFORE
+        #     classification/policy.
+        #
+        #     FAIL CLOSED on doubt (security steering P1/P4): a lookup that is `UNAVAILABLE` (the
+        #     backend raised, or any status other than a definitive OK/NOT_FOUND) does NOT decide
+        #     the identity either way. The turn falls through to the normal path with
+        #     `existence_unavailable=True`, which seeds `tool_failed` so EVERY downstream read -
+        #     even one (e.g. I5 FX) that could succeed independently of the customer-record lookup -
+        #     fails closed to the honest tool-unavailable copy + escalation. Uncertainty therefore
+        #     can NEVER be read as "not a client" nor produce a factual answer.
+        tools = self._tool_layer_factory(session)
+        existence = _safe_read(tools.customer_record_exists)
+        if existence.status is Status.NOT_FOUND:
+            masked = mask_pii(utterance)
+            result = self._noncustomer_handoff(state, tools, masked, trace_id)
+            result.masked_input = masked
+            result.language = state.language
+            return self._finish(result, trace_id)
+        existence_unavailable = existence.status is not Status.OK
+
         # 3. Mask BEFORE anything else reads the utterance; screen the masked text for injection.
         masked = mask_pii(utterance)
         injection_hit = injection.screen(masked).injection_hit
@@ -358,7 +389,10 @@ class Orchestrator:
 
         # 5. Build the typed PolicyInput from tool-resolved facts (never the model). The OK tool
         #    results are kept so an escalation can build the handoff package from the SAME facts.
-        tools = self._tool_layer_factory(session)
+        #    Reuse the session-bound `tools` already built for the step-2b existence check (one
+        #    `ToolLayer` per turn). `existence_unavailable` seeds `tool_failed` so a customer-record
+        #    lookup that was in DOUBT forces every downstream read to fail closed (no FX/other tool
+        #    can disclose a figure after identity uncertainty).
         policy_input, tool_results, tool_failed = self._build_policy_input(
             state=state,
             tools=tools,
@@ -368,6 +402,7 @@ class Orchestrator:
             reference=reference,
             entities=entities,
             proposed_action=proposed_action,
+            existence_unavailable=existence_unavailable,
         )
 
         # 6. Decide + dispatch. The decision is the policy's, never the model's.
@@ -511,6 +546,7 @@ class Orchestrator:
         reference: Reference,
         entities: nlu_entities.ExtractedEntities | None = None,
         proposed_action: Decision | None,
+        existence_unavailable: bool = False,
     ) -> tuple[PolicyInput, list[Result], bool]:
         """Resolve every policy flag deterministically via the ToolLayer (never the model).
 
@@ -533,7 +569,10 @@ class Orchestrator:
         product_owned = False
         state_allows = False
         ambiguous_entity = reference.ambiguous
-        tool_failed = False
+        # Seed with the step-2b customer-record check: an UNAVAILABLE existence lookup is identity
+        # DOUBT, so the whole turn fails closed exactly like any other UNAVAILABLE read - no
+        # downstream tool (even one that could succeed on its own) may disclose a figure (P1/P4).
+        tool_failed = existence_unavailable
         referenced_txn: ReferencedTransaction | None = None
         tool_results: list[Result] = []
 
@@ -621,6 +660,18 @@ class Orchestrator:
                 product_owned = True
                 state_allows = details.data.product_status in _ACTIONABLE_CARD_STATUSES
                 tool_results.append(details)
+
+        # Identity DOUBT dominates (security steering P1/P4): if the step-2b customer-record check
+        # was UNAVAILABLE we neither greeted-as-noncustomer nor confirmed a current customer, so
+        # the identity is unresolved. No downstream read may stand - even one (e.g. I5 FX) that
+        # succeeded on its own - so FORCE every ownership flag closed and drop any gathered facts.
+        # The policy then cannot ANSWER/CONFIRM; `tool_failed` renders the honest tool-unavailable
+        # copy and feeds the escalation streak. A real factual answer is impossible under doubt.
+        if existence_unavailable:
+            resource_owned = False
+            product_owned = False
+            state_allows = False
+            tool_results = []
 
         policy_input = PolicyInput(
             session_valid=state.authenticated,
@@ -876,13 +927,46 @@ class Orchestrator:
         else:
             actions = []
 
+        self._persist_handoff(
+            state,
+            result,
+            tools,
+            reason,
+            priority=decision.priority,
+            tool_results=tool_results,
+            unresolved_questions=unresolved,
+            actions_taken=actions,
+        )
+
+    def _persist_handoff(
+        self,
+        state: SessionState,
+        result: TurnResult,
+        tools: ToolLayer,
+        reason: HandoffReason,
+        *,
+        priority: str,
+        tool_results: list[Result],
+        unresolved_questions: list[str],
+        actions_taken: list[str],
+    ) -> None:
+        """Build the REQ-16 package from verified facts, persist it and record the Handoff span.
+
+        The ONE place a handoff package is created and stored, shared by every escalation (policy
+        or streak) AND the non-customer branch, so trace linkage, case-id assignment and the final
+        Handoff span behave identically. The turn's `trace_id` MUST already be on `result` (set by
+        the caller before this runs) so it is threaded into the package as `trace_ref`; a human
+        agent can then pull the turn trace through the normal REQ-16 package contract. The package
+        is assembled from the SAME OK tool results the policy decided on - never the model - so for
+        a non-customer (empty `tool_results`) nothing can leak.
+        """
         package = build_package(
             state,
             tool_results,
             reason,
-            priority=decision.priority,
-            unresolved_questions=unresolved,
-            actions_taken=actions,
+            priority=priority,
+            unresolved_questions=unresolved_questions,
+            actions_taken=actions_taken,
             trace_ref=result.trace_id,
             now=self._clock(),
         )
@@ -890,6 +974,46 @@ class Orchestrator:
         result.handoff_package = package
         result.handoff_case_id = case_id
         result.spans.append(TraceSpan(node="Handoff", decision=reason.value, detail=case_id))
+
+    def _noncustomer_handoff(
+        self,
+        state: SessionState,
+        tools: ToolLayer,
+        masked: str,
+        trace_id: str,
+    ) -> TurnResult:
+        """Greet a non-customer, route to a human and build the handoff (deliverable 2, REQ-16).
+
+        Called from the deterministic non-customer branch in `_step_locked` when the verified
+        `customer_id` has NO row in the bank's `customers` records. It discloses NO account data:
+        the package is built with NO tool results (empty verified facts - the identity owns
+        nothing), so the no-leak invariant holds by construction. The customer-facing text is the
+        es/pt greeting that welcomes the person and tells them they will be routed to a human
+        (never a figure). The handoff reuses the SAME `_persist_handoff` path every escalation uses
+        (shared package build, trace linkage and store creation), with the dedicated `NON_CUSTOMER`
+        (E5) reason and `normal` priority, so the case reaches the agent console with a case id and
+        a `trace_ref`. The masked turn is recorded first so the package's verbatim request is this
+        turn's (masked) text, and the turn `trace_id` is set on the result BEFORE the package is
+        built so the persisted package carries the correct trace reference.
+        """
+        state.record_turn(masked, None, None)
+        result = TurnResult(
+            node="Handoff",
+            response=self._render(state, Outcome.NONCUSTOMER_HANDOFF),
+            message="noncustomer greeting + handoff",
+            trace_id=trace_id,
+        )
+        self._persist_handoff(
+            state,
+            result,
+            tools,
+            HandoffReason.NON_CUSTOMER,
+            priority="normal",
+            tool_results=[],
+            unresolved_questions=["non-customer: identity not found in bank records"],
+            actions_taken=[],
+        )
+        return result
 
     def _node_abstain(self, state: SessionState, decision: PolicyDecision) -> TurnResult:
         """`Decide -> Abstain` (POL-010/030/999): disclose nothing / route out of scope (4.6).

@@ -32,7 +32,7 @@ from cora.nlu.fallback import MATCH_CONFIDENCE, keyword_fallback_intent
 from cora.nlu.labels import Intent
 from cora.obs.resilience import BreakerState, CircuitBreaker
 from cora.policy import Decision, PolicyEngine, Thresholds
-from cora.tools import InMemoryHandoffStore, Result, Status
+from cora.tools import InMemoryHandoffStore, Result, Status, ToolLayer
 from cora.tools.models import BalanceData, CardDetailsData
 
 _KEY = "test-signing-key-not-a-real-secret"
@@ -51,12 +51,32 @@ class _Clock:
         return self.now
 
 
+class _ExistingCustomerSource:
+    """A `DataSource` stand-in whose `customers` count is 1 (so the double is a real customer).
+
+    The deliverable-2 non-customer branch calls `source.count("customers", where=...)` every turn;
+    returning 1 keeps the resilience turns on the ordinary path, so the read-timeout / breaker /
+    retry behaviour under test is what actually drives the turn (never a false non-customer greet).
+    """
+
+    def count(self, table, *, where=None, **_kwargs):  # noqa: ANN001, ANN003 - test double
+        assert table == "customers"
+        return 1
+
+
 class _FakeToolLayer:
     """In-memory tool layer: owns `PRD-1`, answers the two ownership reads 4.1/5.2 need."""
 
     def __init__(self, owned: set[str]) -> None:
         self._owned = owned
         self.handoff_store = InMemoryHandoffStore()
+        # The non-customer branch reads `customer_id` + `source.count("customers")` every turn.
+        self.customer_id = _CUSTOMER
+        self.source = _ExistingCustomerSource()
+
+    # Reuse the REAL existence contract (needs only `customer_id` + `source.count`), so this double
+    # exercises `ToolLayer.customer_record_exists` instead of a divergent reimplementation.
+    customer_record_exists = ToolLayer.customer_record_exists
 
     def get_balance(self, tool_input):  # noqa: ANN001 - duck-typed test double
         if tool_input.product_id in self._owned:

@@ -47,6 +47,7 @@ from cora.tools.models import (
     GetBalanceInput,
     GetCardDetailsInput,
     HandoffData,
+    HandoffReason,
     ListProductsInput,
     ProductsData,
     ProductSummary,
@@ -245,6 +246,12 @@ class ToolLayer:
             validate_identifier(product_id, what="product_id")
         except ValueError:
             return None, Status.INVALID
+        # Fail-closed on the customer-record gate (review finding 1): a definitive non-customer
+        # (NOT_FOUND) owns no resources, so an orphan product row carrying this id is still denied;
+        # a lookup in DOUBT (UNAVAILABLE) propagates as unavailable rather than a false absence, so
+        # a backend outage never masquerades as "not found".
+        if (blocked := self._registered_customer_block()) is not None:
+            return None, blocked
         df = self.source.fetch_df(
             "products",
             columns=list(_PRODUCT_COLUMNS),
@@ -281,6 +288,12 @@ class ToolLayer:
             validate_identifier(transaction_id, what="transaction_id")
         except ValueError:
             return None, Status.INVALID
+        # Fail-closed on the customer-record gate (review finding 1): a definitive non-customer
+        # (NOT_FOUND) owns no resources, so an orphan transaction row carrying this id is still
+        # denied; a lookup in DOUBT (UNAVAILABLE) propagates as unavailable rather than a false
+        # absence.
+        if (blocked := self._registered_customer_block()) is not None:
+            return None, blocked
         df = self.source.fetch_df(
             "transactions",
             columns=["transaction_id", "customer_id"],
@@ -309,12 +322,87 @@ class ToolLayer:
             Status.INVALID: f"invalid {resource} id",
             Status.NOT_FOUND: f"{resource} not found",
             Status.FORBIDDEN: "not authorized for this resource",
+            # The customer-record gate can block a point/action read with UNAVAILABLE when the
+            # existence lookup is in doubt (review finding 1): fail closed, disclose nothing.
+            Status.UNAVAILABLE: "tool unavailable",
         }[status]
+
+    # -- customer-record existence (deliverable 2, REQ-16) -----------------------------
+
+    def _registered_customer_block(self) -> Status | None:
+        """Three-state authorization gate: may this verified id read customer-scoped resources?
+
+        Security invariant (review finding 1): a verified id absent from `customers` is NOT a
+        current customer and owns NO resources, even if the local/AWS data is inconsistent and an
+        orphan product/transaction row happens to carry that id. Referential integrity is evidence,
+        not an authorization boundary, so every customer-scoped read/action gates on this
+        deterministic `customers`-record lookup (keyed only on the session token's `customer_id`),
+        NOT on a matching resource row.
+
+        The three result states of `customer_record_exists()` are preserved through this gate
+        (never collapsed to a boolean, which would misreport a lookup OUTAGE as definitive absence):
+
+        - `Status.OK`        -> returns `None`: a current customer, the caller reads/acts normally.
+        - `Status.NOT_FOUND` -> returns `Status.NOT_FOUND`: definitively not a customer, so the
+          caller yields empty/not-found and nothing leaks.
+        - `Status.UNAVAILABLE` -> returns `Status.UNAVAILABLE`: the existence lookup is in DOUBT, so
+          the caller must fail closed as unavailable WITHOUT querying or mutating any resource
+          (disclose nothing, do nothing) - never a false "not a customer".
+
+        Does not weaken real customers: a registered id (even one owning zero products) returns
+        `None` and reads normally.
+        """
+        status = self.customer_record_exists().status
+        return None if status is Status.OK else status
+
+    def customer_record_exists(self) -> Result[ProductsData]:
+        """Does the VERIFIED session's `customer_id` have a row in the bank's `customers` records?
+
+        A deterministic existence signal for the non-customer branch (never a model decision,
+        never user text): a bounded `count` on the `customers` dimension keyed on the session's
+        `customer_id` (sourced only from the token). It reads NO customer PII into the turn - just
+        a row count - and carries NO data, so nothing can leak through this result.
+
+        Returns through the SAME uniform `Result` contract every tool uses, so the orchestrator
+        reads it via `_safe_read` and treats the three cases distinctly (P1/P4, fail closed):
+
+        - `Status.OK`        -> the id has >= 1 `customers` row: a current customer.
+        - `Status.NOT_FOUND` -> the id has ZERO rows: definitively not a current customer.
+        - `Status.UNAVAILABLE` -> the lookup RAISED (a transient DataSource/transport error) or the
+          verified id is not a safe identifier: the outcome is in DOUBT, so the caller must NOT
+          decide the identity either way and must fail closed. (`_safe_read` also maps a raised
+          read to `UNAVAILABLE`; catching here keeps the method honest when called directly.)
+        """
+        try:
+            validate_identifier(self.customer_id, what="customer_id")
+        except ValueError:
+            # A malformed verified id should never reach here; if it does, do not guess - the
+            # outcome is in doubt (fail closed), never a false "not a customer".
+            logger.warning("customer existence check: verified customer_id is not a safe identifier")
+            return Result[ProductsData](status=Status.UNAVAILABLE, message="unsafe customer id")
+        try:
+            count = self.source.count("customers", where=f"customer_id = {sql_str_literal(self.customer_id)}")
+        except Exception as exc:  # noqa: BLE001 - any lookup error fails closed to UNAVAILABLE
+            logger.warning("customer existence lookup failed: %s", type(exc).__name__)
+            return Result[ProductsData](status=Status.UNAVAILABLE, message="tool unavailable")
+        status = Status.OK if count > 0 else Status.NOT_FOUND
+        return Result[ProductsData](status=status)
 
     # -- I6: list_products -------------------------------------------------------------
 
     def list_products(self, _input: ListProductsInput | None = None) -> Result[ProductsData]:
-        """List the session customer's products with masked numbers (I6). No side effects."""
+        """List the session customer's products with masked numbers (I6). No side effects.
+
+        Gated on `customers`-record existence (review finding 1), preserving the three-state
+        result: a definitive non-customer (NOT_FOUND) returns an EMPTY list even if an orphan
+        product row carries its id; an existence lookup in DOUBT (UNAVAILABLE) returns
+        `Status.UNAVAILABLE` so a backend outage is never reported as an empty collection. A
+        registered customer (even one with zero products) reads normally.
+        """
+        if (blocked := self._registered_customer_block()) is not None:
+            if blocked is Status.UNAVAILABLE:
+                return Result[ProductsData](status=Status.UNAVAILABLE, message="tool unavailable")
+            return Result[ProductsData](status=Status.OK, data=ProductsData(products=[]))
         df = self.source.fetch_df(
             "products",
             columns=[
@@ -407,7 +495,18 @@ class ToolLayer:
     # -- I2, I3: search_transactions ---------------------------------------------------
 
     def search_transactions(self, tool_input: SearchTransactionsInput) -> Result[TransactionsData]:
-        """Search the session customer's transactions, newest first, capped at 20 rows (I2/I3)."""
+        """Search the session customer's transactions, newest first, capped at 20 rows (I2/I3).
+
+        Gated on `customers`-record existence (review finding 1), preserving the three-state
+        result: a definitive non-customer (NOT_FOUND) returns an EMPTY result even if orphan
+        transaction rows carry its id; an existence lookup in DOUBT (UNAVAILABLE) returns
+        `Status.UNAVAILABLE` so a backend outage is never reported as an empty collection. A
+        registered customer reads normally.
+        """
+        if (blocked := self._registered_customer_block()) is not None:
+            if blocked is Status.UNAVAILABLE:
+                return Result[TransactionsData](status=Status.UNAVAILABLE, message="tool unavailable")
+            return Result[TransactionsData](status=Status.OK, data=TransactionsData(transactions=[]))
         predicates = [f"customer_id = {sql_str_literal(self.customer_id)}"]
 
         if tool_input.product_id is not None:
@@ -630,7 +729,21 @@ class ToolLayer:
     # -- E1-E4: create_handoff (contract + authZ real; store is a Phase-4 seam) ---------
 
     def create_handoff(self, tool_input: CreateHandoffInput) -> Result[HandoffData]:
-        """Create a handoff case for the session customer (E1-E4). Writes the handoff store."""
+        """Create a handoff case for the session customer (E1-E4). Writes the handoff store.
+
+        E5 (`NON_CUSTOMER`) is NEVER a valid input here (TOOL_CONTRACTS.md §create_handoff): it is
+        an orchestrator-only reason set deterministically by the non-customer branch after the
+        `customer_record_exists` check, via the shared `_persist_handoff` path - not through this
+        public tool. Accepting it here would give the model/user a second way to assert the same
+        identity-derived reason without the deterministic existence decision, so it is rejected
+        fail-closed (INVALID) and NOTHING is written (P1: identity/reason never from model input).
+        """
+        if tool_input.reason is HandoffReason.NON_CUSTOMER:
+            return Result[HandoffData](
+                status=Status.INVALID,
+                message="reason E5 is orchestrator-only and not a valid create_handoff input",
+            )
+
         if tool_input.product_id is not None:
             _row, status = self._load_owned_product("create_handoff", tool_input.product_id)
             if status is not None:

@@ -57,6 +57,18 @@ class _Clock:
 
 
 def _build_landing(root: Path) -> None:
+    # Both ids have a `customers` row so the deliverable-2 existence check (`customer_record_exists`)
+    # returns `Status.OK` and these real owners take the ordinary read/FX path. Without the table
+    # the existence lookup would be UNAVAILABLE and the turn would (correctly) fail closed.
+    customers = pd.DataFrame(
+        [
+            {"customer_id": _OWNER, "full_name": "Owner One"},
+            {"customer_id": _OTHER, "full_name": "Other Two"},
+            # A real, registered customer who owns NO products: still has a `customers` row, so the
+            # existence check is OK and I6 answers the grounded empty-list copy (not a non-customer).
+            {"customer_id": "CLI-NOPRODUCTS01", "full_name": "No Products"},
+        ]
+    )
     products = pd.DataFrame(
         [
             {
@@ -100,6 +112,7 @@ def _build_landing(root: Path) -> None:
         ]
     )
     root.mkdir(parents=True, exist_ok=True)
+    customers.astype("string").to_parquet(root / "customers.parquet", index=False)
     products.astype("string").to_parquet(root / "products.parquet", index=False)
     rates.astype("string").to_parquet(root / "daily_exchange_rates.parquet", index=False)
 
